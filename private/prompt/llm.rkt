@@ -45,16 +45,16 @@
       (: schema JSExpr)
       (define schema
         (hash 'type "object"
-              'properties (hash 'reasoning (hash 'type "string")
-                                'choice (hash 'type "string"
-                                              'enum items))
-              'required (list "reasoning" "choice")
+              'properties (hash '1_reasoning (hash 'type "string")
+                                '2_choice (hash 'type "string"
+                                                'enum items))
+              'required (list "1_reasoning" "2_choice")
               'additionalProperties #f))
       (display text)
       (let* ([response (assert (request-llm schema (cons (list 'system text) msgs))
                                hash?)]
-             [choice (assert (hash-ref response 'choice) string?)]
-             [reasoning (assert (hash-ref response 'reasoning) string?)])
+             [choice (assert (hash-ref response '2_choice) string?)]
+             [reasoning (assert (hash-ref response '1_reasoning) string?)])
         (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
         (values (assert choice (second op)) text reasoning)))))
 
@@ -65,15 +65,15 @@
   (: schema JSExpr)
   (define schema
     (hash 'type "object"
-          'properties (hash 'content (hash 'type "string")
-                            'reasoning (hash 'type "string"))
-          'required (list "content" "reasoning")
+          'properties (hash '1_reasoning (hash 'type "string")
+                            '2_content (hash 'type "string"))
+          'required (list "1_reasoning" "2_content")
           'additionalProperties #f))
   (printf "* ~a\n" title)
   (let* ([response (assert (request-llm schema (cons (list 'system title) msgs))
                            hash?)]
-         [content (assert (hash-ref response 'content) string?)]
-         [reasoning (assert (hash-ref response 'reasoning) string?)])
+         [content (assert (hash-ref response '2_content) string?)]
+         [reasoning (assert (hash-ref response '1_reasoning) string?)])
     (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
     (values content title reasoning)))
 
@@ -87,20 +87,20 @@
   (: schema JSExpr)
   (define schema
     (hash 'type "object"
-          'properties (hash 'content (apply hash `(type
-                                                   "number"
-                                                   ,@(case (car op)
-                                                       [(integer) '()]
-                                                       [(natural) '(minimum 0)]
-                                                       [(positive) '(minimum 1)])))
-                            'reasoning (hash 'type "string"))
-          'required (list "content" "reasoning")
+          'properties (hash '1_reasoning (hash 'type "string")
+                            '2_content (apply hash `(type
+                                                     "number"
+                                                     ,@(case (car op)
+                                                         [(integer) '()]
+                                                         [(natural) '(minimum 0)]
+                                                         [(positive) '(minimum 1)]))))
+          'required (list  "1_reasoning" "2_content")
           'additionalProperties #f))
   (printf "* ~a\n" title)
   (let* ([response (assert (request-llm schema (cons (list 'system title) msgs))
                            hash?)]
-         [content (assert (hash-ref response 'content) string?)]
-         [reasoning (assert (hash-ref response 'reasoning) string?)])
+         [content (assert (hash-ref response '2_content) string?)]
+         [reasoning (assert (hash-ref response '1_reasoning) string?)])
     (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
     (assert content exact?)
     (values (case (car op)
@@ -118,17 +118,17 @@
   (: schema JSExpr)
   (define schema
     (hash 'type "object"
-          'properties (hash 'content (hash 'type "number"
-                                           'minimum (third op)
-                                           'maximum (fifth op))
-                            'reasoning (hash 'type "string"))
-          'required (list "content" "reasoning")
+          'properties (hash '1_reasoning (hash 'type "string")
+                            '2_content (hash 'type "number"
+                                             'minimum (third op)
+                                             'maximum (fifth op)))
+          'required (list  "1_reasoning" "2_content")
           'additionalProperties #f))
   (printf "* ~a\n" title)
   (let* ([response (assert (request-llm schema (cons (list 'system title) msgs))
                            hash?)]
-         [content (assert (hash-ref response 'content) string?)]
-         [reasoning (assert (hash-ref response 'reasoning) string?)])
+         [content (assert (hash-ref response '2_content) string?)]
+         [reasoning (assert (hash-ref response '1_reasoning) string?)])
     (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
     (assert content exact?)
     (assert content integer?)
