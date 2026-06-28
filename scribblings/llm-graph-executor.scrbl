@@ -7,4 +7,4 @@
 
 @defmodule[llm-graph-executor]
 
-Package Description Here
+An LLM plugin for graph-executor.

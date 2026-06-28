@@ -1,3 +1,3 @@
 llm-graph-executor
 ==================
-README text here.
+An LLM plugin for graph-executor.
