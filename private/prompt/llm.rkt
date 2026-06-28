@@ -55,7 +55,7 @@
                                hash?)]
              [choice (assert (hash-ref response 'choice) string?)]
              [reasoning (assert (hash-ref response 'reasoning) string?)])
-        (printf "> ~a\n\n(reasoning: ~a)\n" choice reasoning)
+        (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
         (values (assert choice (second op)) text reasoning)))))
 
 (: llm-string (-> (Listof Message)
@@ -74,7 +74,7 @@
                            hash?)]
          [content (assert (hash-ref response 'content) string?)]
          [reasoning (assert (hash-ref response 'reasoning) string?)])
-    (printf "> ~a\n\n(reasoning: ~a)\n" content reasoning)
+    (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
     (values content title reasoning)))
 
 (: llm-input-number (case-> (-> (Listof Message) String (List 'integer)
@@ -101,7 +101,7 @@
                            hash?)]
          [content (assert (hash-ref response 'content) string?)]
          [reasoning (assert (hash-ref response 'reasoning) string?)])
-    (printf "> ~a\n\n(reasoning: ~a)\n" content reasoning)
+    (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
     (assert content exact?)
     (values (case (car op)
               [(integer) (assert content integer?)]
@@ -129,7 +129,7 @@
                            hash?)]
          [content (assert (hash-ref response 'content) string?)]
          [reasoning (assert (hash-ref response 'reasoning) string?)])
-    (printf "> ~a\n\n(reasoning: ~a)\n" content reasoning)
+    (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
     (assert content exact?)
     (assert content integer?)
     (if (and (<= (third op) content)
