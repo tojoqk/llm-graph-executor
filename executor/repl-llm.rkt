@@ -35,7 +35,7 @@
                        (define-values (next-st next-node next-h)
                          (llm-repl-step st chosen-edge
                                         (cons
-                                         (history-edge
+                                         (make-history-edge
                                           'auto
                                           (edge-name chosen-edge)
                                           (string-join `(,(node-name n)
@@ -62,17 +62,17 @@
         [bh : (Boxof History) (box h)])
     (: log-prompt (-> String Prompt-Value Void))
     (define (log-prompt title val)
-      (set-box! bh (cons (history-prompt val title) (unbox bh))))
+      (set-box! bh (cons (make-history-prompt val title) (unbox bh))))
     (: llm-log-prompt (-> String Prompt-Value (Option String) Void))
     (define (llm-log-prompt title val reasoning)
-      (set-box! bh (cons (llm-history-prompt val title 'assistant reasoning) (unbox bh))))
+      (set-box! bh (cons (make-llm-history-prompt val title 'assistant reasoning) (unbox bh))))
 
     (define st-1
       (parameterize ([current-prompt
                       ((inst llm-repl-prompt Any) log-prompt llm-log-prompt
                                                   (history->messages (unbox bh)))])
         ((edge-trans e) st)))
-    (set-box! bh (cons (history-node (node-name n) (node-desc n)) (unbox bh)))
+    (set-box! bh (cons (make-history-node (node-name n) (node-desc n)) (unbox bh)))
     (define st-2
       (parameterize ([current-prompt
                       ((inst llm-repl-prompt Any) log-prompt llm-log-prompt
@@ -102,11 +102,11 @@
     (let ([name : String ((llm-prompt/log log-reasoning msgs) title `(choose ,string? ,edge-names))])
       (cond [(findf (lambda ([edge : (Edge T S)]) (string=? name (edge-name edge))) edges)
              => (lambda ([e : (Edge T S)])
-                  (values e (cons (llm-history-edge 'choose
-                                                    (edge-name e)
-                                                    (unbox prompt-text-box)
-                                                    'assistant
-                                                    (unbox reasoning-box))
+                  (values e (cons (make-llm-history-edge 'choose
+                                                         (edge-name e)
+                                                         (unbox prompt-text-box)
+                                                         'assistant
+                                                         (unbox reasoning-box))
                                   h)))]
             [else
              (error 'llm-choose "unexpected error")]))))

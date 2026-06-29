@@ -5,44 +5,65 @@
 (require graph-executor/history)
 (require "../llm/llm.rkt")
 
-(provide (struct-out llm-history-edge) LLM-History-Edge
-         (struct-out llm-history-prompt) LLM-History-Prompt
-         history-edge-role history-prompt-reasoning
+(provide make-llm-history-edge history-edge-role history-edge-reasoning
+         make-llm-history-prompt history-prompt-role history-prompt-reasoning
          history->messages)
 
-(struct llm-history-edge history-edge ([role : Role]
-                                       [reasoning : (Option String)])
-  #:transparent
-  #:type-name LLM-History-Edge)
+(require racket/hash)
 
-(struct llm-history-prompt history-prompt ([role : Role]
-                                           [reasoning : (Option String)])
-  #:transparent
-  #:type-name LLM-History-Prompt)
+(define-type Attribute-Value (U Symbol String Integer Boolean))
+
+(: make-llm-history-edge (->* ((U 'choose 'auto) String String Role (Option String))
+                              ((Immutable-HashTable Symbol Attribute-Value))
+                              History-Edge))
+(define (make-llm-history-edge mode name prompt role reasoning [attrs ((inst hash Symbol Attribute-Value))])
+  (make-history-edge mode name prompt
+                     (hash-union attrs
+                                 (hash 'role role
+                                       'reasoning reasoning))))
+
+(: make-llm-history-prompt (->* (Prompt-Value String Role (Option String))
+                                ((Immutable-HashTable Symbol Attribute-Value))
+                                History-Prompt))
+(define (make-llm-history-prompt value text role reasoning [attrs ((inst hash Symbol Attribute-Value))])
+  (make-history-prompt value text (hash-union attrs
+                                              (hash 'role role
+                                                    'reasoning reasoning))))
+
+
+(: value->role (-> Any Role))
+(define (value->role v)
+  (case v
+    [(user) 'user]
+    [(assistant) 'assistant]
+    [(system) 'system]
+    [else 'user]))
 
 (: history-prompt-role (-> History-Prompt Role))
 (define (history-prompt-role x)
-  (if (llm-history-prompt? x)
-      (llm-history-prompt-role x)
-      (current-default-role)))
+  (cond [(hash-ref (history-prompt-attributes x) 'role #f) => value->role]
+        [else 'user]))
 
 (: history-edge-role (-> History-Edge Role))
 (define (history-edge-role x)
-  (if (llm-history-edge? x)
-      (llm-history-edge-role x)
-      (current-default-role)))
+  (cond [(hash-ref (history-edge-attributes x) 'role #f) => value->role]
+        [else 'user]))
+
+(: value->reasoning (-> Any (Option String)))
+(define (value->reasoning v)
+  (if (string? v)
+      v
+      #f))
 
 (: history-prompt-reasoning (-> History-Prompt (Option String)))
 (define (history-prompt-reasoning x)
-  (if (llm-history-prompt? x)
-      (llm-history-prompt-reasoning x)
-      #f))
+  (cond [(hash-ref (history-prompt-attributes x) 'reasoning #f) => value->reasoning]
+        [else #f]))
 
 (: history-edge-reasoning (-> History-Edge (Option String)))
 (define (history-edge-reasoning x)
-  (if (llm-history-edge? x)
-      (llm-history-edge-reasoning x)
-      #f))
+  (cond [(hash-ref (history-edge-attributes x) 'reasoning #f) => value->reasoning]
+        [else #f]))
 
 (: prompt-value->string (-> Prompt-Value String))
 (define (prompt-value->string x)
