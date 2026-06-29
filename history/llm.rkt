@@ -65,15 +65,9 @@
   (cond [(hash-ref (history-edge-attributes x) 'reasoning #f) => value->reasoning]
         [else #f]))
 
-(: prompt-value->string (-> Prompt-Value String))
-(define (prompt-value->string x)
-  (if (number? x)
-      (number->string x)
-      x))
-
 (: history->messages (-> History (Listof Message)))
 (define (history->messages h)
-  (: format-json (-> String (Option String) String))
+  (: format-json (-> JSExpr JSExpr String))
   (define (format-json value reasoning)
     (if reasoning
         (jsexpr->string (hash 'value value
@@ -82,7 +76,7 @@
   (append-map (lambda ([x : (U History-Record)])
                 (cond [(history-prompt? x)
                        (list (list (history-prompt-role x)
-                                   (format-json (prompt-value->string (history-prompt-value x))
+                                   (format-json (history-prompt-value x)
                                                 (history-prompt-reasoning x)))
                              (list 'system (history-prompt-text x)))]
                       [(history-edge? x)
