@@ -23,9 +23,6 @@
       (values n st h))
     (cond [(find-graph gs (node-graph-id n))
            => (lambda ([g : (Graph T S)])
-                (displayln (format "--- Current Node: ~a (Graph: ~a) ---"
-                                   (node-name n)
-                                   (graph-name g)))
                 (let ([ne (next-edges gs st n)])
                   (case (car ne)
                     [(terminated) (terminate)]
@@ -72,6 +69,10 @@
                       ((inst llm-repl-prompt Any) log-prompt llm-log-prompt
                                                   (history->messages (unbox bh)))])
         ((edge-trans e) st)))
+    (printf "--- Current Node: ~a (Graph: ~a) ---\n"
+            (node-name n)
+            (node-graph-name n))
+    (cond [(node-desc n) => displayln])
     (set-box! bh (cons (make-history-node (node-name n) (node-desc n)) (unbox bh)))
     (define st-2
       (parameterize ([current-prompt
@@ -88,10 +89,7 @@
   (let* ([edges : (Pairof (Edge T S) (Listof (Edge T S))) (second ne)]
          [edge-names ((inst map String (Edge T S)) edge-name edges)]
          [dom : (Node T S) (edge-dom (car edges))]
-         [title : String (cond [(node-desc dom)
-                                => (lambda ([desc : String])
-                                     (format "~a\n~a\n" (node-name dom) desc))]
-                               [else (node-name dom)])]
+         [title : String (node-prompt dom)]
          [msgs (history->messages h)]
          [prompt-text-box : (Boxof String) (box "")]
          [reasoning-box : (Boxof (Option String)) (box #f)])
