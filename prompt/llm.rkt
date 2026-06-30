@@ -38,5 +38,5 @@
                            (->* (String (List 'random Positive-Integer))
                                 (Role)
                                 Natural))))
-(define (llm-prompt title op [role (current-default-role)])
-  ((inst prompt A) title op (hash 'role role)))
+(define (llm-prompt title op [role (current-default-llm-role)])
+  ((inst prompt A) title op (hash 'llm-role role)))

@@ -45,7 +45,7 @@
                        (loop next-node next-st next-h))]
                     [(choose)
                      (define-values (chosen-edge next-h-1)
-                       (case (node-role n)
+                       (case (node-llm-role n)
                          [(user system) (repl-choose ne h)]
                          [(assistant) (llm-choose ne h)]))
                      (define-values (next-st next-node next-h-2)
@@ -128,13 +128,13 @@
                                 (Listof Message)
                                 (Prompt A))))
 (define ((llm-repl-prompt repl-logger llm-logger msgs) title op [attrs ((inst hash Symbol Any))])
-  (let ([role (hash-ref attrs 'role #f)])
+  (let ([role (hash-ref attrs 'llm-role #f)])
     (case role
       [(assistant)
        (((inst llm-prompt/log A) llm-logger msgs) title op attrs)]
       [else
        (case role
          [(system)
-          (parameterize ([current-default-role 'system])
+          (parameterize ([current-default-llm-role 'system])
             (((inst repl-prompt/log A) repl-logger) title op attrs))]
          [else (((inst repl-prompt/log A) repl-logger) title op attrs)])])))

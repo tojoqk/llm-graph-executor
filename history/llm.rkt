@@ -19,7 +19,7 @@
 (define (make-llm-history-edge mode name prompt role reasoning [attrs ((inst hash Symbol Attribute-Value))])
   (make-history-edge mode name prompt
                      (hash-union attrs
-                                 (hash 'role role
+                                 (hash 'llm-role role
                                        'reasoning reasoning))))
 
 (: make-llm-history-prompt (->* (Prompt-Value String Role (Option String))
@@ -27,7 +27,7 @@
                                 History-Prompt))
 (define (make-llm-history-prompt value text role reasoning [attrs ((inst hash Symbol Attribute-Value))])
   (make-history-prompt value text (hash-union attrs
-                                              (hash 'role role
+                                              (hash 'llm-role role
                                                     'reasoning reasoning))))
 
 
@@ -41,12 +41,12 @@
 
 (: history-prompt-role (-> History-Prompt Role))
 (define (history-prompt-role x)
-  (cond [(hash-ref (history-prompt-attributes x) 'role #f) => value->role]
+  (cond [(hash-ref (history-prompt-attributes x) 'llm-role #f) => value->role]
         [else 'user]))
 
 (: history-edge-role (-> History-Edge Role))
 (define (history-edge-role x)
-  (cond [(hash-ref (history-edge-attributes x) 'role #f) => value->role]
+  (cond [(hash-ref (history-edge-attributes x) 'llm-role #f) => value->role]
         [else 'user]))
 
 (: value->reasoning (-> Any (Option String)))
