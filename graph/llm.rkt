@@ -12,13 +12,16 @@
                                #:type T
                                [#:desc (Option String)]
                                [#:trans (Option (-> S S))]
+                               [#:prompt (Option String)]
                                [#:role (Option Role)]
                                (Node T S)))))
 (define ((llm-node-maker graph-name) name
                                      #:type type #:desc [desc #f] #:trans [tr #f]
+                                     #:prompt [pmt #f]
                                      #:role [role #f])
   (((inst node-maker T S) graph-name) name
                                       #:type type #:desc desc #:trans tr
+                                      #:prompt pmt
                                       #:attributes ((inst hash Symbol Any)
                                                     'role
                                                     (or role (current-default-role)))))
