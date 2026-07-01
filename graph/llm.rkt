@@ -18,12 +18,12 @@
                                      #:type type #:desc [desc #f] #:trans [tr #f]
                                      #:prompt [pmt #f]
                                      #:llm-role [role #f])
-  (((inst node-maker T S) graph-name) name
-                                      #:type type #:desc desc #:trans tr
-                                      #:prompt pmt
-                                      #:attributes ((inst hash Symbol Any)
-                                                    'llm-role
-                                                    (or role (current-default-llm-role)))))
+  (((inst node-maker* T S) graph-name) name
+                                       #:type type #:desc desc #:trans tr
+                                       #:prompt pmt
+                                       #:attributes ((inst hash Symbol Any)
+                                                     'llm-role
+                                                     (or role (current-default-llm-role)))))
 
 (: node-llm-role (All (T S) (-> (Node T S) Role)))
 (define (node-llm-role n)
