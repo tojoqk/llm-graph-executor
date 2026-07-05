@@ -135,6 +135,6 @@
       [else
        (case role
          [(system)
-          (parameterize ([current-default-llm-role 'system])
+          (parameterize ([current-llm-role 'system])
             (((inst repl-prompt/log A) repl-logger) title op attrs))]
          [else (((inst repl-prompt/log A) repl-logger) title op attrs)])])))

@@ -23,12 +23,12 @@
                                        #:prompt pmt
                                        #:attributes ((inst hash Symbol Any)
                                                      'llm-role
-                                                     (or role (current-default-llm-role)))))
+                                                     (or role (current-llm-role)))))
 
 (: node-llm-role (All (T S) (-> (Node T S) Role)))
 (define (node-llm-role n)
   (cond [(hash-ref (node-attributes n) 'llm-role #f)
          => (lambda ([r : Any])
               (cond [(or (eq? r 'user) (eq? r 'assistant)) r]
-                    [else (current-default-llm-role)]))]
-        [else (current-default-llm-role)]))
+                    [else (current-llm-role)]))]
+        [else (current-llm-role)]))
