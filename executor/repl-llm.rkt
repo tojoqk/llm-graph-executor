@@ -129,12 +129,12 @@
                                 (Prompt A))))
 (define ((llm-repl-prompt repl-logger llm-logger msgs) title op [attrs ((inst hash Symbol Any))])
   (let ([role (hash-ref attrs 'llm-role #f)])
-    (case role
+    (case (if (role? role) role (current-llm-role))
       [(assistant)
        (((inst llm-prompt/log A) llm-logger msgs) title op attrs)]
-      [else
-       (case role
-         [(system)
-          (parameterize ([current-llm-role 'system])
-            (((inst repl-prompt/log A) repl-logger) title op attrs))]
-         [else (((inst repl-prompt/log A) repl-logger) title op attrs)])])))
+      [(system)
+       (parameterize ([current-llm-role 'system])
+         (((inst repl-prompt/log A) repl-logger) title op attrs))]
+      [(user)
+       (((inst repl-prompt/log A) repl-logger) title op attrs)])))
+
