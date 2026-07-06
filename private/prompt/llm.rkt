@@ -103,13 +103,12 @@
   (with-retry (current-llm-prompt-retry-count)
     (let* ([response (assert (request-llm schema (cons (list 'system title) msgs))
                              hash?)]
-           [content (assert (hash-ref response '2_content) string?)]
+           [content (assert (hash-ref response '2_content) exact?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
       (case (car op)
         [(integer) (assert content integer?)]
         [(natural) (assert content natural?)]
         [(positive) (assert content positive-integer?)])
-      (assert content exact?)
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
       (values content title reasoning))))
 
@@ -131,11 +130,9 @@
   (with-retry (current-llm-prompt-retry-count)
    (let* ([response (assert (request-llm schema (cons (list 'system title) msgs))
                             hash?)]
-          [content (assert (hash-ref response '2_content) string?)]
+          [content (assert (assert (hash-ref response '2_content) exact?) integer?)]
           [reasoning (assert (hash-ref response '1_reasoning) string?)])
      (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
-     (assert content exact?)
-     (assert content integer?)
      (if (and (<= (third op) content)
               (<= content (fifth op)))
          (values content title reasoning)
