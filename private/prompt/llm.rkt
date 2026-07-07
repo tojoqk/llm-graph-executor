@@ -112,9 +112,9 @@
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
       (values content title reasoning))))
 
-(: llm-range (case-> (-> (Listof Message) String (List 'range 'from Natural 'to Natural)
+(: llm-range (case-> (-> (Listof Message) String (List 'range Natural Natural)
                          (Values Natural String (Option String)))
-                     (-> (Listof Message) String (List 'range 'from Integer 'to Integer)
+                     (-> (Listof Message) String (List 'range Integer Integer)
                          (Values Integer String (Option String)))))
 (define (llm-range msgs title op)
   (: schema JSExpr)
@@ -122,8 +122,8 @@
     (hash 'type "object"
           'properties (hash '1_reasoning (hash 'type "string")
                             '2_content (hash 'type "number"
-                                             'minimum (third op)
-                                             'maximum (fifth op)))
+                                             'minimum (second op)
+                                             'maximum (third op)))
           'required (list  "1_reasoning" "2_content")
           'additionalProperties #f))
   (printf "* ~a\n" title)
@@ -133,8 +133,8 @@
           [content (assert (assert (hash-ref response '2_content) exact?) integer?)]
           [reasoning (assert (hash-ref response '1_reasoning) string?)])
      (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
-     (if (and (<= (third op) content)
-              (<= content (fifth op)))
+     (if (and (<= (second op) content)
+              (<= content (third op)))
          (values content title reasoning)
          (error 'llm-range "range error")))))
 
