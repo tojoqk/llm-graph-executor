@@ -5,7 +5,7 @@
 (require graph-executor/executor)
 (require graph-executor/executor/repl)
 (require graph-executor/history)
-(require "../private/prompt/llm-repl.rkt")
+(require "../private/prompt/repl-llm.rkt")
 (require "../graph/llm.rkt")
 (require "../llm.rkt")
 (require "../history/llm.rkt")
@@ -30,7 +30,7 @@
                      (let ([chosen-edge (auto-choose ne)])
                        (displayln (format ">> [Auto] ~a" (edge-name chosen-edge)))
                        (define-values (next-st next-node next-h)
-                         (llm-repl-step st chosen-edge
+                         (repl-llm-step st chosen-edge
                                         (cons
                                          (make-history-edge
                                           'auto
@@ -49,12 +49,12 @@
                          [(user system) (repl-choose ne h)]
                          [(assistant) (llm-choose ne h)]))
                      (define-values (next-st next-node next-h-2)
-                       (llm-repl-step st chosen-edge next-h-1))
+                       (repl-llm-step st chosen-edge next-h-1))
                      (loop next-node next-st next-h-2)])))]
           [else (terminate)])))
 
-(: llm-repl-step (All (T S) (-> S (Edge T S) History (values S (Node T S) History))))
-(define (llm-repl-step st e h)
+(: repl-llm-step (All (T S) (-> S (Edge T S) History (values S (Node T S) History))))
+(define (repl-llm-step st e h)
   (let ([n (edge-cod e)]
         [bh : (Boxof History) (box h)])
     (: log-prompt (-> String Prompt-Value Void))
@@ -66,7 +66,7 @@
 
     (define st-1
       (parameterize ([current-prompt
-                      ((inst llm-repl-prompt Any) log-prompt llm-log-prompt
+                      ((inst repl-llm-prompt Any) log-prompt llm-log-prompt
                                                   (history->messages (unbox bh)))])
         ((edge-trans e) st)))
     (printf "--- Current Node: ~a (Graph: ~a) ---\n"
@@ -76,7 +76,7 @@
     (set-box! bh (cons (make-history-node (node-name n) (node-desc n)) (unbox bh)))
     (define st-2
       (parameterize ([current-prompt
-                      ((inst llm-repl-prompt Any) log-prompt llm-log-prompt
+                      ((inst repl-llm-prompt Any) log-prompt llm-log-prompt
                                                   (history->messages (unbox bh)))])
         ((node-trans n) st-1)))
     (values st-2 n (unbox bh))))
@@ -123,11 +123,11 @@
       (k (unbox prompt-text-box) value (unbox reasoning-box))
       value)))
 
-(: llm-repl-prompt (All (A) (-> (-> String Prompt-Value Void)
+(: repl-llm-prompt (All (A) (-> (-> String Prompt-Value Void)
                                 (-> String Prompt-Value (Option String) Void)
                                 (Listof LLM-Message)
                                 (Prompt A))))
-(define ((llm-repl-prompt repl-logger llm-logger msgs) title op)
+(define ((repl-llm-prompt repl-logger llm-logger msgs) title op)
   (case (current-llm-role)
     [(assistant)
      (((inst llm-prompt/log A) llm-logger msgs) title op)]
