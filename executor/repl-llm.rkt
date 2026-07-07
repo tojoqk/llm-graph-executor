@@ -110,7 +110,7 @@
              (error 'llm-choose "unexpected error")]))))
 
 (: llm-prompt/log (All (A) (-> (-> String Prompt-Value (Option String) Void)
-                               (Listof Message)
+                               (Listof LLM-Message)
                                (Prompt A))))
 (define ((llm-prompt/log k msgs) title op [_ (hash)])
   (let ([reasoning-box : (Boxof (Option String)) (box #f)]
@@ -125,7 +125,7 @@
 
 (: llm-repl-prompt (All (A) (-> (-> String Prompt-Value Void)
                                 (-> String Prompt-Value (Option String) Void)
-                                (Listof Message)
+                                (Listof LLM-Message)
                                 (Prompt A))))
 (define ((llm-repl-prompt repl-logger llm-logger msgs) title op)
   (case (current-llm-role)

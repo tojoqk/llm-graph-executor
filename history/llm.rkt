@@ -13,7 +13,7 @@
 
 (define-type Attribute-Value (U Symbol String Integer Boolean))
 
-(: make-llm-history-edge (->* ((U 'choose 'auto) String String Role (Option String))
+(: make-llm-history-edge (->* ((U 'choose 'auto) String String LLM-Role (Option String))
                               ((Immutable-HashTable Symbol Attribute-Value))
                               History-Edge))
 (define (make-llm-history-edge mode name prompt role reasoning [attrs ((inst hash Symbol Attribute-Value))])
@@ -22,7 +22,7 @@
                                  (hash 'llm-role role
                                        'reasoning reasoning))))
 
-(: make-llm-history-prompt (->* (Prompt-Value String Role (Option String))
+(: make-llm-history-prompt (->* (Prompt-Value String LLM-Role (Option String))
                                 ((Immutable-HashTable Symbol Attribute-Value))
                                 History-Prompt))
 (define (make-llm-history-prompt value text role reasoning [attrs ((inst hash Symbol Attribute-Value))])
@@ -31,7 +31,7 @@
                                                     'reasoning reasoning))))
 
 
-(: value->role (-> Any Role))
+(: value->role (-> Any LLM-Role))
 (define (value->role v)
   (case v
     [(user) 'user]
@@ -39,12 +39,12 @@
     [(system) 'system]
     [else 'user]))
 
-(: history-prompt-role (-> History-Prompt Role))
+(: history-prompt-role (-> History-Prompt LLM-Role))
 (define (history-prompt-role x)
   (cond [(hash-ref (history-prompt-attributes x) 'llm-role #f) => value->role]
         [else 'user]))
 
-(: history-edge-role (-> History-Edge Role))
+(: history-edge-role (-> History-Edge LLM-Role))
 (define (history-edge-role x)
   (cond [(hash-ref (history-edge-attributes x) 'llm-role #f) => value->role]
         [else 'user]))
@@ -65,7 +65,7 @@
   (cond [(hash-ref (history-edge-attributes x) 'reasoning #f) => value->reasoning]
         [else #f]))
 
-(: history->messages (-> History (Listof Message)))
+(: history->messages (-> History (Listof LLM-Message)))
 (define (history->messages h)
   (: format-json (-> JSExpr JSExpr String))
   (define (format-json value reasoning)

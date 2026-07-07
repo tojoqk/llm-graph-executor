@@ -7,7 +7,7 @@
 
 (provide llm-prompt)
 
-(: llm-prompt (All (A) (-> (-> String (Option String) Void) (Listof Message) (Prompt A))))
+(: llm-prompt (All (A) (-> (-> String (Option String) Void) (Listof LLM-Message) (Prompt A))))
 (define ((llm-prompt set-prompt msgs) title op [_ (hash)])
   (define-values (value prompt-text reasoning)
     (case (car op)
@@ -21,7 +21,7 @@
   value)
 
 (: llm-choose (All (A)
-                   (-> (Listof Message)
+                   (-> (Listof LLM-Message)
                        String (List 'choose
                                     (-> Any Boolean : #:+ A)
                                     (Listof (U (∩ String A)
@@ -60,7 +60,7 @@
           (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
           (values choice text reasoning))))))
 
-(: llm-string (-> (Listof Message)
+(: llm-string (-> (Listof LLM-Message)
                   String (List 'string)
                   (Values String String (Option String))))
 (define (llm-string msgs title op)
@@ -80,11 +80,11 @@
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
       (values content title reasoning))))
 
-(: llm-input-number (case-> (-> (Listof Message) String (List 'integer)
+(: llm-input-number (case-> (-> (Listof LLM-Message) String (List 'integer)
                                 (Values Integer String (Option String)))
-                            (-> (Listof Message) String (List 'natural)
+                            (-> (Listof LLM-Message) String (List 'natural)
                                 (Values Natural String (Option String)))
-                            (-> (Listof Message) String (List 'positive)
+                            (-> (Listof LLM-Message) String (List 'positive)
                                 (Values Positive-Integer String (Option String)))))
 (define (llm-input-number msgs title op)
   (: schema JSExpr)
@@ -112,11 +112,11 @@
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
       (values content title reasoning))))
 
-(: llm-range (case-> (-> (Listof Message) String (List 'range Positive-Integer Positive-Integer)
+(: llm-range (case-> (-> (Listof LLM-Message) String (List 'range Positive-Integer Positive-Integer)
                          (Values Positive-Integer String (Option String)))
-                     (-> (Listof Message) String (List 'range Natural Natural)
+                     (-> (Listof LLM-Message) String (List 'range Natural Natural)
                          (Values Natural String (Option String)))
-                     (-> (Listof Message) String (List 'range Integer Integer)
+                     (-> (Listof LLM-Message) String (List 'range Integer Integer)
                          (Values Integer String (Option String)))))
 (define (llm-range msgs title op)
   (: schema JSExpr)

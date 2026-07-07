@@ -12,7 +12,7 @@
                                [#:desc (Option String)]
                                [#:trans (Option (-> S S))]
                                [#:prompt (Option String)]
-                               [#:llm-role (Option Role)]
+                               [#:llm-role (Option LLM-Role)]
                                (Node T S)))))
 (define ((llm-node-maker graph-name) name
                                      #:type type #:desc [desc #f] #:trans [tr #f]
@@ -25,7 +25,7 @@
                                                      'llm-role
                                                      (or role (current-llm-role)))))
 
-(: node-llm-role (All (T S) (-> (Node T S) Role)))
+(: node-llm-role (All (T S) (-> (Node T S) LLM-Role)))
 (define (node-llm-role n)
   (cond [(hash-ref (node-attributes n) 'llm-role #f)
          => (lambda ([r : Any])

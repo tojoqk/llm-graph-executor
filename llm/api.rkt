@@ -5,7 +5,7 @@
 
 (provide request-llm current-llm-model current-llm-host current-llm-port)
 
-(: message->jsexpr (-> Message JSExpr))
+(: message->jsexpr (-> LLM-Message JSExpr))
 (define (message->jsexpr m)
   (hash 'role (symbol->string (first m))
         'content (second m)))
@@ -17,7 +17,7 @@
 (: current-llm-port (Parameterof Positive-Integer))
 (define current-llm-port (make-parameter 8000))
 
-(: make-payload (-> JSExpr (Listof Message) JSExpr))
+(: make-payload (-> JSExpr (Listof LLM-Message) JSExpr))
 (define (make-payload schema messages)
   (apply (inst hash Symbol JSExpr)
          `(
@@ -39,7 +39,7 @@
         'properties (hash 'text (hash 'type "string"))
         'required (list "text")))
 
-(: request-llm (-> JSExpr (Listof Message) JSExpr))
+(: request-llm (-> JSExpr (Listof LLM-Message) JSExpr))
 (define (request-llm schema messages)
   (define host (current-llm-host))
   (define port (current-llm-port))
