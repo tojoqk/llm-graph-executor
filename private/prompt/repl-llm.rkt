@@ -144,10 +144,12 @@
 (define (llm-random title op)
   (let ([r (random (second op))])
     (case (current-repl-random-prompt-mode)
-      [(verbose)
+      [(show)
        (printf "* ~a\n" title)
-       (printf "(random) > ~a\n" r)])
-    (values r title #f)))
+       (printf "(random) > ~a\n" r)
+       (values r title #f)]
+      [(hide)
+       (values r title #f)])))
 
 
 (: call-with-retry (All (A B C) (-> Natural (-> (Values A B C))
