@@ -9,7 +9,7 @@
 (provide llm-prompt)
 
 (: llm-prompt (All (A) (-> (-> String (Option String) Void) (Listof LLM-Message) (Prompt A))))
-(define ((llm-prompt set-prompt msgs) title op [_ (hash)])
+(define ((llm-prompt set-prompt msgs) title op)
   (define-values (value prompt-text reasoning)
     (case (car op)
       [(choose) ((inst llm-choose A) msgs title op)]
