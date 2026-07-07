@@ -90,5 +90,7 @@
                                    (string-join `(,(history-node-name x)
                                                   ,@(cond [(history-node-desc x) => list]
                                                           [else '()]))
-                                                "\n")))]))
+                                                "\n")))]
+                      [(history-message? x)
+                       (list (list 'system (history-message-content x)))]))
               h))
