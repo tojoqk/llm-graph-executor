@@ -12,7 +12,6 @@
 (define ((llm-prompt set-prompt msgs) title op [_ (hash)])
   (define-values (value prompt-text reasoning)
     (case (car op)
-      [(const) ((inst llm-const A) title op)]
       [(choose) ((inst llm-choose A) msgs title op)]
       [(string) (llm-string msgs title op)]
       [(integer natural positive) (llm-input-number msgs title op)]
@@ -140,15 +139,6 @@
               (<= content (third op)))
          (values content title reasoning)
          (error 'llm-range "range error")))))
-
-(: llm-const (All (A)
-                  (-> String
-                      (List 'const (-> Any Boolean : #:+ A) (∩ A Prompt-Value))
-                      (Values (∩ A Prompt-Value) String (Option String)))))
-(define (llm-const title op)
-  (case (current-repl-const-prompt-mode)
-    [(verbose) (printf "* ~a\n> ~a\n" title (third op))])
-  (values (assert (third op) (second op)) title #f))
 
 (: llm-random (-> String (List 'random Positive-Integer) (Values Natural String (Option String))))
 (define (llm-random title op)
