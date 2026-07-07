@@ -2,7 +2,7 @@
 
 (require graph-executor/prompt)
 (require "../../llm/api.rkt")
-(require "../../llm/llm.rkt")
+(require "../../llm.rkt")
 (require typed/json)
 
 (provide llm-prompt)

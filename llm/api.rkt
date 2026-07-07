@@ -1,7 +1,7 @@
 #lang typed/racket
 (require typed/json
          typed/net/http-client)
-(require "llm.rkt")
+(require "../llm.rkt")
 
 (provide request-llm current-llm-model current-llm-host current-llm-port)
 

@@ -7,7 +7,7 @@
 (require graph-executor/history)
 (require "../private/prompt/llm.rkt")
 (require "../graph/llm.rkt")
-(require "../llm/llm.rkt")
+(require "../llm.rkt")
 (require "../history/llm.rkt")
 
 (provide repl-llm-run)

@@ -3,7 +3,7 @@
 (require typed/json)
 (require graph-executor/prompt)
 (require graph-executor/history)
-(require "../llm/llm.rkt")
+(require "../llm.rkt")
 
 (provide make-llm-history-edge history-edge-role history-edge-reasoning
          make-llm-history-prompt history-prompt-role history-prompt-reasoning

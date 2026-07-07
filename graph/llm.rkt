@@ -1,7 +1,7 @@
 #lang typed/racket
 
 (require graph-executor/graph
-         "../llm/llm.rkt")
+         "../llm.rkt")
 
 (provide llm-node-maker node-llm-role)
 
