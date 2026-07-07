@@ -112,7 +112,9 @@
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
       (values content title reasoning))))
 
-(: llm-range (case-> (-> (Listof Message) String (List 'range Natural Natural)
+(: llm-range (case-> (-> (Listof Message) String (List 'range Positive-Integer Positive-Integer)
+                         (Values Positive-Integer String (Option String)))
+                     (-> (Listof Message) String (List 'range Natural Natural)
                          (Values Natural String (Option String)))
                      (-> (Listof Message) String (List 'range Integer Integer)
                          (Values Integer String (Option String)))))
