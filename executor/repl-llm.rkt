@@ -20,7 +20,8 @@
              [st initial-state]
              [h : History '()])
     (define (terminate)
-      (displayln ">> Terminated")
+      (when (current-repl-trace-display?)
+        (displayln ">> Terminated"))
       (values n st h))
     (cond [(find-graph gs (node-graph-id n))
            => (lambda ([g : (Graph T S)])
@@ -29,7 +30,8 @@
                     [(terminated) (terminate)]
                     [(auto)
                      (let ([chosen-edge (auto-choose ne)])
-                       (displayln (format ">> [Auto] ~a" (edge-name chosen-edge)))
+                       (when (current-repl-trace-display?)
+                         (displayln (format ">> [Auto] ~a" (edge-name chosen-edge))))
                        (define-values (next-st next-node next-h)
                          (repl-llm-step st chosen-edge
                                         (cons
@@ -76,9 +78,10 @@
                                                   (history->messages (unbox bh)))]
                      [current-message message-with-log])
         ((edge-trans e) st)))
-    (printf "--- Current Node: ~a (Graph: ~a) ---\n"
-            (node-name n)
-            (node-graph-name n))
+    (when (current-repl-trace-display?)
+      (printf "--- Current Node: ~a (Graph: ~a) ---\n"
+              (node-name n)
+              (node-graph-name n)))
     (cond [(node-desc n) => displayln])
     (set-box! bh (cons (make-history-node (node-name n) (node-desc n)) (unbox bh)))
     (define st-2
