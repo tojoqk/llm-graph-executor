@@ -5,6 +5,7 @@
 (require graph-executor/executor)
 (require graph-executor/executor/repl)
 (require graph-executor/history)
+(require graph-executor/message)
 (require "../private/prompt/repl-llm.rkt")
 (require "../graph/llm.rkt")
 (require "../llm.rkt")
@@ -63,11 +64,17 @@
     (: llm-log-prompt (-> String Prompt-Value (Option String) Void))
     (define (llm-log-prompt title val reasoning)
       (set-box! bh (cons (make-llm-history-prompt val title 'assistant reasoning) (unbox bh))))
+    (: message-with-log (-> Any Void))
+    (define (message-with-log val)
+      (let ([str (~a val)])
+        (set-box! bh (cons (make-history-message str) (unbox bh)))
+        (displayln val)))
 
     (define st-1
       (parameterize ([current-prompt
                       ((inst repl-llm-prompt Any) log-prompt llm-log-prompt
-                                                  (history->messages (unbox bh)))])
+                                                  (history->messages (unbox bh)))]
+                     [current-message message-with-log])
         ((edge-trans e) st)))
     (printf "--- Current Node: ~a (Graph: ~a) ---\n"
             (node-name n)
@@ -77,7 +84,8 @@
     (define st-2
       (parameterize ([current-prompt
                       ((inst repl-llm-prompt Any) log-prompt llm-log-prompt
-                                                  (history->messages (unbox bh)))])
+                                                  (history->messages (unbox bh)))]
+                     [current-message message-with-log])
         ((node-trans n) st-1)))
     (values st-2 n (unbox bh))))
 
