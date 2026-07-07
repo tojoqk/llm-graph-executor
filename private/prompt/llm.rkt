@@ -1,6 +1,7 @@
 #lang typed/racket
 
 (require graph-executor/prompt)
+(require graph-executor/executor/repl)
 (require "../../llm/api.rkt")
 (require "../../llm.rkt")
 (require typed/json)
@@ -145,14 +146,17 @@
                       (List 'const (-> Any Boolean : #:+ A) (∩ A Prompt-Value))
                       (Values (∩ A Prompt-Value) String (Option String)))))
 (define (llm-const title op)
-  (printf "* ~a\n> ~a\n" title (third op))
+  (case (current-repl-const-prompt-mode)
+    [(verbose) (printf "* ~a\n> ~a\n" title (third op))])
   (values (assert (third op) (second op)) title #f))
 
 (: llm-random (-> String (List 'random Positive-Integer) (Values Natural String (Option String))))
 (define (llm-random title op)
-  (printf "* ~a\n" title)
   (let ([r (random (second op))])
-    (printf "(random) > ~a\n" r)
+    (case (current-repl-random-prompt-mode)
+      [(verbose)
+       (printf "* ~a\n" title)
+       (printf "(random) > ~a\n" r)])
     (values r title #f)))
 
 
