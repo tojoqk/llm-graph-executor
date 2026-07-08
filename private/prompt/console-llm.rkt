@@ -1,7 +1,7 @@
 #lang typed/racket
 
 (require graph-executor/prompt)
-(require graph-executor/executor/repl)
+(require graph-executor/executor/console)
 (require "../../llm/api.rkt")
 (require "../../llm.rkt")
 (require typed/json)
@@ -143,7 +143,7 @@
 (: llm-random (-> String (List 'random Positive-Integer) (Values Natural String (Option String))))
 (define (llm-random title op)
   (let ([r (random (second op))])
-    (case (current-repl-random-prompt-display)
+    (case (current-console-random-prompt-display)
       [(show)
        (printf "* ~a\n" title)
        (printf "(random) > ~a\n" r)

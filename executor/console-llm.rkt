@@ -3,24 +3,24 @@
 (require graph-executor/graph)
 (require graph-executor/prompt)
 (require graph-executor/executor)
-(require graph-executor/executor/repl)
+(require graph-executor/executor/console)
 (require graph-executor/history)
 (require graph-executor/message)
-(require "../private/prompt/repl-llm.rkt")
+(require "../private/prompt/console-llm.rkt")
 (require "../graph/llm.rkt")
 (require "../llm.rkt")
 (require "../history/llm.rkt")
 
-(provide repl-llm-run)
+(provide console-llm-run)
 
-(: repl-llm-run (All (T S) (-> (Listof (Graph T S)) (Node T S) S
+(: console-llm-run (All (T S) (-> (Listof (Graph T S)) (Node T S) S
                                (Values (Node T S) S History))))
-(define (repl-llm-run gs entry initial-state)
+(define (console-llm-run gs entry initial-state)
   (let loop ([n entry]
              [st initial-state]
              [h : History '()])
     (define (terminate)
-      (when (current-repl-trace-display?)
+      (when (current-console-trace-display?)
         (displayln ">> Terminated"))
       (values n st h))
     (cond [(find-graph gs (node-graph-id n))
@@ -30,10 +30,10 @@
                     [(terminated) (terminate)]
                     [(auto)
                      (let ([chosen-edge (auto-choose ne)])
-                       (when (current-repl-trace-display?)
+                       (when (current-console-trace-display?)
                          (displayln (format ">> [Auto] ~a" (edge-name chosen-edge))))
                        (define-values (next-st next-node next-h)
-                         (repl-llm-step st chosen-edge
+                         (console-llm-step st chosen-edge
                                         (cons
                                          (make-history-edge
                                           'auto
@@ -49,15 +49,15 @@
                     [(choose)
                      (define-values (chosen-edge next-h-1)
                        (case (node-llm-role n)
-                         [(user system) (repl-choose ne h)]
+                         [(user system) (console-choose ne h)]
                          [(assistant) (llm-choose ne h)]))
                      (define-values (next-st next-node next-h-2)
-                       (repl-llm-step st chosen-edge next-h-1))
+                       (console-llm-step st chosen-edge next-h-1))
                      (loop next-node next-st next-h-2)])))]
           [else (terminate)])))
 
-(: repl-llm-step (All (T S) (-> S (Edge T S) History (values S (Node T S) History))))
-(define (repl-llm-step st e h)
+(: console-llm-step (All (T S) (-> S (Edge T S) History (values S (Node T S) History))))
+(define (console-llm-step st e h)
   (let ([n (edge-cod e)]
         [bh : (Boxof History) (box h)])
     (: log-prompt (-> String Prompt-Value Void))
@@ -74,11 +74,11 @@
 
     (define st-1
       (parameterize ([current-prompt
-                      ((inst repl-llm-prompt Any) log-prompt llm-log-prompt
+                      ((inst console-llm-prompt Any) log-prompt llm-log-prompt
                                                   (history->messages (unbox bh)))]
                      [current-message message-with-log])
         ((edge-trans e) st)))
-    (when (current-repl-trace-display?)
+    (when (current-console-trace-display?)
       (printf "--- Current Node: ~a (Graph: ~a) ---\n"
               (node-name n)
               (node-graph-name n)))
@@ -86,7 +86,7 @@
     (set-box! bh (cons (make-history-node (node-name n) (node-desc n)) (unbox bh)))
     (define st-2
       (parameterize ([current-prompt
-                      ((inst repl-llm-prompt Any) log-prompt llm-log-prompt
+                      ((inst console-llm-prompt Any) log-prompt llm-log-prompt
                                                   (history->messages (unbox bh)))]
                      [current-message message-with-log])
         ((node-trans n) st-1)))
@@ -134,13 +134,13 @@
       (k (unbox prompt-text-box) value (unbox reasoning-box))
       value)))
 
-(: repl-llm-prompt (All (A) (-> (-> String Prompt-Value Void)
+(: console-llm-prompt (All (A) (-> (-> String Prompt-Value Void)
                                 (-> String Prompt-Value (Option String) Void)
                                 (Listof LLM-Message)
                                 (Prompt A))))
-(define ((repl-llm-prompt repl-logger llm-logger msgs) title op)
+(define ((console-llm-prompt console-logger llm-logger msgs) title op)
   (case (current-llm-role)
     [(assistant)
      (((inst llm-prompt/log A) llm-logger msgs) title op)]
     [(user system)
-     (((inst repl-prompt/log A) repl-logger) title op)]))
+     (((inst console-prompt/log A) console-logger) title op)]))
