@@ -22,13 +22,13 @@
                                  (hash 'llm-role role
                                        'reasoning reasoning))))
 
-(: make-llm-history-prompt (->* (Prompt-Value String LLM-Role (Option String))
+(: make-llm-history-prompt (->* (Prompt-Type Prompt-Value String LLM-Role (Option String))
                                 ((Immutable-HashTable Symbol Attribute-Value))
                                 History-Prompt))
-(define (make-llm-history-prompt value text role reasoning [attrs ((inst hash Symbol Attribute-Value))])
-  (make-history-prompt value text (hash-union attrs
-                                              (hash 'llm-role role
-                                                    'reasoning reasoning))))
+(define (make-llm-history-prompt type value text role reasoning [attrs ((inst hash Symbol Attribute-Value))])
+  (make-history-prompt type value text (hash-union attrs
+                                                   (hash 'llm-role role
+                                                         'reasoning reasoning))))
 
 
 (: value->role (-> Any LLM-Role))

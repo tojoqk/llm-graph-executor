@@ -60,12 +60,12 @@
 (define (console-llm-step st e h)
   (let ([n (edge-cod e)]
         [bh : (Boxof History) (box h)])
-    (: log-prompt (-> String Prompt-Value Void))
-    (define (log-prompt title val)
-      (set-box! bh (cons (make-history-prompt val title) (unbox bh))))
-    (: llm-log-prompt (-> String Prompt-Value (Option String) Void))
-    (define (llm-log-prompt title val reasoning)
-      (set-box! bh (cons (make-llm-history-prompt val title 'assistant reasoning) (unbox bh))))
+    (: log-prompt (-> Prompt-Type Prompt-Value String Void))
+    (define (log-prompt type val title)
+      (set-box! bh (cons (make-history-prompt type val title) (unbox bh))))
+    (: llm-log-prompt (-> Prompt-Type Prompt-Value String (Option String) Void))
+    (define (llm-log-prompt type val title reasoning)
+      (set-box! bh (cons (make-llm-history-prompt type val title 'assistant reasoning) (unbox bh))))
     (: message-with-log (-> Any Void))
     (define (message-with-log val)
       (let ([str (~a val)])
@@ -104,8 +104,8 @@
          [msgs (history->messages h)]
          [prompt-text-box : (Boxof String) (box "")]
          [reasoning-box : (Boxof (Option String)) (box #f)])
-    (: log-reasoning (-> String Prompt-Value (Option String) Void))
-    (define (log-reasoning prompt-text _val reasoning)
+    (: log-reasoning (-> Prompt-Type Prompt-Value String (Option String) Void))
+    (define (log-reasoning _type _val prompt-text reasoning)
       (set-box! prompt-text-box prompt-text)
       (set-box! reasoning-box reasoning))
     (let ([name : String ((llm-prompt/log log-reasoning msgs) title `(choose ,string? ,edge-names))])
@@ -120,7 +120,7 @@
             [else
              (error 'llm-choose "unexpected error")]))))
 
-(: llm-prompt/log (All (A) (-> (-> String Prompt-Value (Option String) Void)
+(: llm-prompt/log (All (A) (-> (-> Prompt-Type Prompt-Value String (Option String) Void)
                                (Listof LLM-Message)
                                (Prompt A))))
 (define ((llm-prompt/log k msgs) title op [_ (hash)])
@@ -131,11 +131,11 @@
       (set-box! prompt-text-box text)
       (set-box! reasoning-box reasoning))
     (let ([value (((inst llm-prompt A) log-prompt msgs) title op)])
-      (k (unbox prompt-text-box) value (unbox reasoning-box))
+      (k (first op) value (unbox prompt-text-box) (unbox reasoning-box))
       value)))
 
-(: console-llm-prompt (All (A) (-> (-> String Prompt-Value Void)
-                                (-> String Prompt-Value (Option String) Void)
+(: console-llm-prompt (All (A) (-> (-> Prompt-Type Prompt-Value String Void)
+                                (-> Prompt-Type Prompt-Value String (Option String) Void)
                                 (Listof LLM-Message)
                                 (Prompt A))))
 (define ((console-llm-prompt console-logger llm-logger msgs) title op)
