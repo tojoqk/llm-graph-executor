@@ -35,11 +35,15 @@
                   (format "~a" prompt-text)))))
   (: auto-messages (-> (History-Auto T S) (Listof LLM-Message)))
   (define (auto-messages x)
-    (let ([e (history-edge-edge x)])
-      (list (list 'system
-                  (if (edge-desc e)
-                      (format "(auto) ~a\n~a" (edge-name e) (edge-desc e))
-                      (format "(auto) ~a" (edge-name e)))))))
+    (let ([e (history-edge-edge x)]
+          [prompt-text (node-prompt (edge-dom e))])
+      (list* (list 'system
+                   (if (edge-desc e)
+                       (format "(auto) ~a\n~a" (edge-name e) (edge-desc e))
+                       (format "(auto) ~a" (edge-name e))))
+             (if prompt-text
+                 (format "~a" prompt-text)
+                 '()))))
   (: choose-messages (-> (History-Choose T S) (Listof LLM-Message)))
   (define (choose-messages x)
     (let* ([e (history-edge-edge x)]
