@@ -8,27 +8,22 @@
 
 (provide console-llm-prompt)
 
-(: console-llm-prompt (All (A) (-> (Listof LLM-Message) (Prompt-Implementation A))))
+(: console-llm-prompt (-> (Listof LLM-Message) Prompt-Implementation))
 (define ((console-llm-prompt msgs) title op)
-  (define-values (value reasoning)
-    (case (car op)
-      [(choose) ((inst llm-choose A) msgs title op)]
-      [(string) (llm-string msgs title op)]
-      [(integer natural positive) (llm-input-number msgs title op)]
-      [(range) (llm-range msgs title op)]
-      [(random) (llm-random title op)]))
-  (values value (if reasoning `((reasoning . ,reasoning)) '())))
+  (case (car op)
+    [(choose) (llm-choose msgs title op)]
+    [(string) (llm-string msgs title op)]
+    [(integer natural positive) (llm-input-number msgs title op)]
+    [(range) (llm-range msgs title op)]
+    [(random) (llm-random title op)]))
 
-(: llm-choose (All (A)
-                   (-> (Listof LLM-Message)
-                       String (List 'choose
-                                    (-> Any Boolean : #:+ A)
-                                    (Listof (U (∩ String A)
-                                               (List (∩ String A) String))))
-                       (Values (∩ String A) String))))
+(: llm-choose (-> (Listof LLM-Message)
+                  String (List 'choose
+                               Any
+                               (Listof (U String (List String String))))
+                  Prompt-Info-Choose))
 (define (llm-choose msgs title op)
-  (: choice->item (-> (U (∩ String A) (List (∩ String A) String))
-                      (∩ String A)))
+  (: choice->item (-> (U String (List String String)) String))
   (define (choice->item c) (if (pair? c) (car c) c))
   (let* ([choices (third op)]
          [items : (Listof String) (map choice->item choices)]
@@ -36,10 +31,8 @@
     (fprintf out "* ~a\n" title)
     (for ([choice choices])
       (if (pair? choice)
-          (cond [(car choice)
-                 => (lambda ([target : String])
-                      (fprintf out "- ~a: ~a\n" (car choice) (cadr choice)))])
-          (fprintf out "  - ~a\n" (choice->item choice))))
+          (fprintf out "- ~a: ~a\n" (car choice) (cadr choice))
+          (fprintf out "- ~a\n" choice)))
     (let ([text (get-output-string out)])
       (: schema JSExpr)
       (define schema
@@ -55,13 +48,17 @@
                                  hash?)]
                [choice (assert (hash-ref response '2_choice) string?)]
                [reasoning (assert (hash-ref response '1_reasoning) string?)])
-          (assert choice (second op))
-          (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
-          (values choice reasoning))))))
+          (cond [(member choice items)
+                 (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
+                 (prompt-info-choose title
+                                     `((llm-reasoning . ,reasoning))
+                                     choice
+                                     choices)]
+                [else (error 'llm-choose "~a is not found" choice)]))))))
 
 (: llm-string (-> (Listof LLM-Message)
                   String (List 'string)
-                  (Values String (Option String))))
+                  Prompt-Info-String))
 (define (llm-string msgs title op)
   (: schema JSExpr)
   (define schema
@@ -77,14 +74,14 @@
            [content (assert (hash-ref response '2_content) string?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
-      (values content reasoning))))
+      (prompt-info-string title `((llm-reasoning . ,reasoning)) content))))
 
 (: llm-input-number (case-> (-> (Listof LLM-Message) String (List 'integer)
-                                (Values Integer (Option String)))
+                                Prompt-Info-Integer)
                             (-> (Listof LLM-Message) String (List 'natural)
-                                (Values Natural (Option String)))
+                                Prompt-Info-Natural)
                             (-> (Listof LLM-Message) String (List 'positive)
-                                (Values Positive-Integer (Option String)))))
+                                Prompt-Info-Positive)))
 (define (llm-input-number msgs title op)
   (: schema JSExpr)
   (define schema
@@ -100,23 +97,23 @@
           'additionalProperties #f))
   (printf "* ~a\n" title)
   (with-retry (current-console-llm-prompt-retry-count)
-    (let* ([response (assert (request-llm schema (cons (list 'system title) msgs))
-                             hash?)]
+    (let* ([response (assert (request-llm schema (cons (list 'system title) msgs)) hash?)]
            [content (assert (hash-ref response '2_content) exact?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
-      (case (car op)
-        [(integer) (assert content integer?)]
-        [(natural) (assert content natural?)]
-        [(positive) (assert content positive-integer?)])
-      (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
-      (values content reasoning))))
+      (begin0
+          (case (car op)
+            [(integer)
+             (assert content integer?)
+             (prompt-info-integer title `((llm-reasoning . ,reasoning)) content)]
+            [(natural)
+             (assert content natural?)
+             (prompt-info-natural title `((llm-reasoning . ,reasoning)) content)]
+            [(positive)
+             (assert content positive-integer?)
+             (prompt-info-positive title `((llm-reasoning . ,reasoning)) content)])
+        (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)))))
 
-(: llm-range (case-> (-> (Listof LLM-Message) String (List 'range Positive-Integer Positive-Integer)
-                         (Values Positive-Integer (Option String)))
-                     (-> (Listof LLM-Message) String (List 'range Natural Natural)
-                         (Values Natural (Option String)))
-                     (-> (Listof LLM-Message) String (List 'range Integer Integer)
-                         (Values Integer (Option String)))))
+(: llm-range (-> (Listof LLM-Message) String (List 'range Integer Integer) Prompt-Info-Range))
 (define (llm-range msgs title op)
   (: schema JSExpr)
   (define schema
@@ -129,30 +126,28 @@
           'additionalProperties #f))
   (printf "* ~a\n" title)
   (with-retry (current-console-llm-prompt-retry-count)
-    (let* ([response (assert (request-llm schema (cons (list 'system title) msgs))
-                             hash?)]
+    (let* ([response (assert (request-llm schema (cons (list 'system title) msgs)) hash?)]
            [content (assert (assert (hash-ref response '2_content) exact?) integer?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
       (if (and (<= (second op) content)
                (<= content (third op)))
-          (values content reasoning)
+          (prompt-info-range title `((llm-reasoning . ,reasoning)) content (second op) (third op))
           (error 'llm-range "range error")))))
 
-(: llm-random (-> String (List 'random Positive-Integer) (Values Natural (Option String))))
+(: llm-random (-> String (List 'random Positive-Integer) Prompt-Info-Random))
 (define (llm-random title op)
   (let ([r (random (second op))])
     (case (current-console-random-prompt-display)
       [(show)
        (printf "* ~a\n" title)
        (printf "(random) > ~a\n" r)
-       (values r #f)]
+       (prompt-info-random title '() r (second op))]
       [(hide)
-       (values r #f)])))
+       (prompt-info-random title '() r (second op))])))
 
 
-(: call-with-retry (All (A B) (-> Natural (-> (Values A B))
-                                  (Values A B))))
+(: call-with-retry (All (A) (-> Natural (-> A) A)))
 (define (call-with-retry n proc)
   (let retry ([c : Natural n])
     (with-handlers ([exn:fail?
