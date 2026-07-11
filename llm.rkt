@@ -44,8 +44,7 @@
   (define (choose-messages x)
     (let* ([e (history-edge-edge x)]
            [dom (edge-dom e)])
-      (let ([prompt-text (let ([out (open-output-string)]
-                               [items (history-choose-items x)])
+      (let ([prompt-text (let ([out (open-output-string)])
                            (fprintf out "~a\n" (or (node-prompt dom) (current-node-prompt)))
                            (for ([item (history-choose-items x)])
                              (if (edge-desc item)
