@@ -86,28 +86,25 @@
         [cod (edge-cod e)]
         [msgs (history->messages h)])
     (define st-1
-      (let ([msgs (history->messages h)])
-        (parameterize ([current-prompt
-                        (case (type->role (node-type dom))
-                          [(assistant) (console-llm-prompt/log logger 'edge msgs)]
-                          [(user system) (console-prompt/log logger 'edge)])]
-                       [current-message (message-with-log 'edge)])
-          ((edge-trans e) st))))
-    (let ([msgs-2 (append (history->messages (list (event-logger->history-edge logger)))
-                          msgs)])
-      (when (current-console-trace-display?)
-        (printf "--- Current Node: ~a (Graph: ~a) ---\n"
-                (node-name cod)
-                (node-graph-name cod)))
-      (cond [(node-desc cod) => displayln])
-      (define st-2
-        (parameterize ([current-prompt
-                        (case (type->role (node-type cod))
-                          [(assistant) (console-llm-prompt/log logger 'node msgs)]
-                          [(user system) (console-prompt/log logger 'node)])]
-                       [current-message (message-with-log 'node)])
-          ((node-trans cod) st-1)))
-      st-2)))
+      (parameterize ([current-prompt
+                      (case (type->role (node-type dom))
+                        [(assistant) (console-llm-prompt/log logger 'edge msgs history->messages)]
+                        [(user system) (console-prompt/log logger 'edge)])]
+                     [current-message (message-with-log 'edge)])
+        ((edge-trans e) st)))
+    (when (current-console-trace-display?)
+      (printf "--- Current Node: ~a (Graph: ~a) ---\n"
+              (node-name cod)
+              (node-graph-name cod)))
+    (cond [(node-desc cod) => displayln])
+    (define st-2
+      (parameterize ([current-prompt
+                      (case (type->role (node-type cod))
+                        [(assistant) (console-llm-prompt/log logger 'node msgs history->messages)]
+                        [(user system) (console-prompt/log logger 'node)])]
+                     [current-message (message-with-log 'node)])
+        ((node-trans cod) st-1)))
+    st-2))
 
 (: llm-choose (All (T S)
                    (-> (List 'choose (Pairof (Edge T S) (Listof (Edge T S))))
@@ -130,11 +127,20 @@
                                (-> (Event-Logger T S)
                                    (U 'edge 'node)
                                    (Listof LLM-Message)
+                                   (-> (History T S) (Listof LLM-Message))
                                    Prompt-Implementation)))
-(define ((console-llm-prompt/log logger type msgs) title op)
-  (let ([info ((console-llm-prompt msgs) title op)])
-    (event-logger-prompt-log! logger type info)
-    info))
+(define ((console-llm-prompt/log logger type msgs history->messages) title op)
+  (let ([msgs (case type
+                [(edge)
+                 (append (history->messages (list (event-logger->history-edge logger)))
+                         msgs)]
+                [(node)
+                 (append (history->messages (list (event-logger->history-node logger)))
+                         (history->messages (list (event-logger->history-edge logger)))
+                         msgs)])])
+    (let ([info ((console-llm-prompt msgs) title op)])
+      (event-logger-prompt-log! logger type info)
+      info)))
 
 (: console-prompt/log (All (T S) (-> (Event-Logger T S) (U 'edge 'node) Prompt-Implementation)))
 (define ((console-prompt/log logger type) title op)
