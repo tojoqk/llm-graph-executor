@@ -13,7 +13,7 @@
   (case (car op)
     [(choose) (llm-choose msgs title op)]
     [(string) (llm-string msgs title op)]
-    [(integer natural positive) (llm-input-number msgs title op)]
+    [(integer natural positive-integer) (llm-input-number msgs title op)]
     [(range) (llm-range msgs title op)]
     [(random) (llm-random title op)]))
 
@@ -80,8 +80,8 @@
                                 Prompt-Info-Integer)
                             (-> (Listof LLM-Message) String (List 'natural)
                                 Prompt-Info-Natural)
-                            (-> (Listof LLM-Message) String (List 'positive)
-                                Prompt-Info-Positive)))
+                            (-> (Listof LLM-Message) String (List 'positive-integer)
+                                Prompt-Info-Positive-Integer)))
 (define (llm-input-number msgs title op)
   (: schema JSExpr)
   (define schema
@@ -92,7 +92,7 @@
                                                      ,@(case (car op)
                                                          [(integer) '()]
                                                          [(natural) '(minimum 0)]
-                                                         [(positive) '(minimum 1)]))))
+                                                         [(positive-integer) '(minimum 1)]))))
           'required (list  "1_reasoning" "2_content")
           'additionalProperties #f))
   (printf "* ~a\n" title)
@@ -108,9 +108,9 @@
             [(natural)
              (assert content natural?)
              (prompt-info-natural title `((llm-reasoning . ,reasoning)) content)]
-            [(positive)
+            [(positive-integer)
              (assert content positive-integer?)
-             (prompt-info-positive title `((llm-reasoning . ,reasoning)) content)])
+             (prompt-info-positive-integer title `((llm-reasoning . ,reasoning)) content)])
         (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)))))
 
 (: llm-range (-> (Listof LLM-Message) String (List 'range Integer Integer) Prompt-Info-Range))
