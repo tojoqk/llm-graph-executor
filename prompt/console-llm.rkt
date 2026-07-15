@@ -126,7 +126,12 @@
           'additionalProperties #f))
   (printf "* ~a\n" title)
   (with-retry (current-console-llm-prompt-retry-count)
-    (let* ([response (assert (request-llm schema (cons (list 'system title) msgs)) hash?)]
+    (let* ([response (assert (request-llm schema (cons
+                                                  (list 'system (format "* ~a\n(~a..~a)?"
+                                                                        title
+                                                                        (second op)
+                                                                        (third op)))
+                                                  msgs)) hash?)]
            [content (assert (assert (hash-ref response '2_content) exact?) integer?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
