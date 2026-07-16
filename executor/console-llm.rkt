@@ -62,11 +62,13 @@
                           (event-logger->history-edge logger)
                           h))))]
         [(choose)
+         (define choose-pmt ((node-prompt n) st))
          (let-values ([(chosen-edge attrs)
                        (case (type->llm-role (node-type n))
-                         [(assistant) (llm-choose ne (history->llm-messages h))]
-                         [(user system) (console-choose ne)])])
+                         [(assistant) (llm-choose choose-pmt ne (history->llm-messages h))]
+                         [(user system) (console-choose choose-pmt ne)])])
            (let* ([logger (make-event-logger chosen-edge
+                                             choose-pmt
                                              (second ne)
                                              attrs
                                              (edge-cod chosen-edge))]
@@ -110,14 +112,14 @@
     st-2))
 
 (: llm-choose (All (T S)
-                   (-> (List 'choose (Pairof (Edge T S) (Listof (Edge T S))))
+                   (-> String
+                       (List 'choose (Pairof (Edge T S) (Listof (Edge T S))))
                        (Listof LLM-Message)
                        (Values (Edge T S) Prompt-Attributes))))
-(define (llm-choose ne msgs)
+(define (llm-choose title ne msgs)
   (let* ([edges (second ne)]
          [edge-names ((inst map String (Edge T S)) edge-name edges)]
-         [dom (edge-dom (car edges))]
-         [title (node-prompt dom)])
+         [dom (edge-dom (car edges))])
     (let* ([info ((console-llm-prompt msgs) title `(choose ,string? ,edge-names))]
            [name (prompt-info-choose-value info)]
            [attrs (prompt-info-attributes info)])
