@@ -66,19 +66,25 @@
          (let-values ([(chosen-edge attrs)
                        (case (type->llm-role (node-type n))
                          [(assistant) (llm-choose choose-pmt ne (history->llm-messages h))]
-                         [(user system) (console-choose choose-pmt ne)])])
-           (let* ([logger (make-event-logger chosen-edge
-                                             choose-pmt
-                                             (second ne)
-                                             attrs
-                                             (edge-cod chosen-edge))]
-                  [next-st (console-llm-step st chosen-edge logger
-                                             h type->llm-role history->llm-messages)])
-             (loop (edge-cod chosen-edge)
-                   next-st
-                   (list* (event-logger->history-node logger)
-                          (event-logger->history-edge logger)
-                          h))))]))))
+                         [(user system) (values (console-choose choose-pmt ne) '())])])
+           (cond [(eq? chosen-edge 'quit) (terminate)]
+                 [(eq? chosen-edge 'undo)
+                  (define undo-j (journal-undo (history->journal h)))
+                  (define-values (undo-n undo-st undo-h) (replay gs entry initial-state undo-j))
+                  (loop undo-n undo-st undo-h)]
+                 [else
+                  (let* ([logger (make-event-logger chosen-edge
+                                                    choose-pmt
+                                                    (second ne)
+                                                    attrs
+                                                    (edge-cod chosen-edge))]
+                         [next-st (console-llm-step st chosen-edge logger
+                                                    h type->llm-role history->llm-messages)])
+                    (loop (edge-cod chosen-edge)
+                          next-st
+                          (list* (event-logger->history-node logger)
+                                 (event-logger->history-edge logger)
+                                 h)))]))]))))
 
 (: console-llm-step (All (T S) (-> S (Edge T S) (Event-Logger T S) (History T S) (-> T LLM-Role) (-> (History T S) (Listof LLM-Message)) S)))
 (define (console-llm-step st e logger h type->role history->messages)
