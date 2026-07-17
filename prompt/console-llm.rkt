@@ -18,28 +18,24 @@
     [(random) (llm-random title op)]))
 
 (: llm-choose (-> (Listof LLM-Message)
-                  String (List 'choose
-                               Any
-                               (Listof (U String (List String String))))
+                  String (U (List 'choose Procedure (Listof String))
+                            (List 'choose (Listof String)))
                   Prompt-Info-Choose))
 (define (llm-choose msgs title op)
-  (: choice->item (-> (U String (List String String)) String))
-  (define (choice->item c) (if (pair? c) (car c) c))
-  (let* ([choices (third op)]
-         [items : (Listof String) (map choice->item choices)]
+  (let* ([choices (if (procedure? (second op))
+                      (third op)
+                      (second op))]
          [out : Output-Port (open-output-string)])
     (fprintf out "* ~a\n" title)
     (for ([choice choices])
-      (if (pair? choice)
-          (fprintf out "- ~a: ~a\n" (car choice) (cadr choice))
-          (fprintf out "- ~a\n" choice)))
+      (fprintf out "- ~a\n" choice))
     (let ([text (get-output-string out)])
       (: schema JSExpr)
       (define schema
         (hash 'type "object"
               'properties (hash '1_reasoning (hash 'type "string")
                                 '2_choice (hash 'type "string"
-                                                'enum items))
+                                                'enum choices))
               'required (list "1_reasoning" "2_choice")
               'additionalProperties #f))
       (display text)
@@ -48,7 +44,7 @@
                                  hash?)]
                [choice (assert (hash-ref response '2_choice) string?)]
                [reasoning (assert (hash-ref response '1_reasoning) string?)])
-          (cond [(member choice items)
+          (cond [(member choice choices)
                  (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
                  (prompt-info-choose title
                                      `((llm-reasoning . ,reasoning))
