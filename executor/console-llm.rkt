@@ -37,12 +37,15 @@
   (: history->llm-messages (-> (History T S) (Listof LLM-Message)))
   (define (history->llm-messages h)
     (append-map record->llm-messages h))
-  (define-values (n st _h) (replay gs entry initial-state j))
+  (define-values (n st h) (replay gs entry initial-state j))
   (let loop ([n n]
              [st st]
-             [j j])
-    (define-values (_n _st h) (replay gs entry initial-state j))
-    (define command-dispatch (console-command-dispatch gs entry initial-state loop))
+             [h h])
+    (define command-dispatch
+      (console-command-dispatch gs entry initial-state
+                                (lambda (_n _st [l-j : Journal])
+                                  (define-values (n* st* h*) (replay gs entry initial-state l-j))
+                                  (loop n* st* h*))))
     (define (terminate)
       (when (current-console-trace-display?)
         (displayln ">> Terminated"))
@@ -59,9 +62,9 @@
                                             h type->llm-role history->llm-messages)])
              (loop (edge-cod chosen-edge)
                    next-st
-                   (history->journal (list* (history-logger->history-record-node logger)
-                                            (history-logger->history-record-edge logger)
-                                            h)))))]
+                   (list* (history-logger->history-record-node logger)
+                          (history-logger->history-record-edge logger)
+                          h))))]
         [(choose)
          (define choose-pmt ((node-prompt n) st))
          (let-values ([(cmd attrs)
@@ -84,9 +87,9 @@
                                                 h type->llm-role history->llm-messages)])
                 (loop (edge-cod chosen-edge)
                       next-st
-                      (history->journal (list* (history-logger->history-record-node logger)
-                                               (history-logger->history-record-edge logger)
-                                               h))))]
+                      (list* (history-logger->history-record-node logger)
+                             (history-logger->history-record-edge logger)
+                             h)))]
              [else (command-dispatch n st j cmd)]))]))))
 
 (: console-llm-step (All (T S) (-> S (Edge T S) (History-Logger T S) (History T S) (-> T LLM-Role) (-> (History T S) (Listof LLM-Message)) S)))
