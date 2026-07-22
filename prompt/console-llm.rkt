@@ -20,7 +20,7 @@
 (: llm-choose (-> (Listof LLM-Message)
                   String (U (List 'choose Procedure (Listof String))
                             (List 'choose (Listof String)))
-                  Prompt-Info-Choose))
+                  (Values String Prompt-Attributes)))
 (define (llm-choose msgs title op)
   (let* ([choices (if (procedure? (second op))
                       (third op)
@@ -46,15 +46,12 @@
                [reasoning (assert (hash-ref response '1_reasoning) string?)])
           (cond [(member choice choices)
                  (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
-                 (prompt-info-choose title
-                                     `((llm-reasoning . ,reasoning))
-                                     choice
-                                     choices)]
+                 (values choice `((llm-reasoning . ,reasoning)))]
                 [else (error 'llm-choose "~a is not found" choice)]))))))
 
 (: llm-string (-> (Listof LLM-Message)
                   String (List 'string)
-                  Prompt-Info-String))
+                  (Values String Prompt-Attributes)))
 (define (llm-string msgs title op)
   (: schema JSExpr)
   (define schema
@@ -70,14 +67,14 @@
            [content (assert (hash-ref response '2_content) string?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
-      (prompt-info-string title `((llm-reasoning . ,reasoning)) content))))
+      (values content `((llm-reasoning . ,reasoning))))))
 
 (: llm-input-number (case-> (-> (Listof LLM-Message) String (List 'integer)
-                                Prompt-Info-Integer)
+                                (Values Integer Prompt-Attributes))
                             (-> (Listof LLM-Message) String (List 'natural)
-                                Prompt-Info-Natural)
+                                (Values Natural Prompt-Attributes))
                             (-> (Listof LLM-Message) String (List 'positive-integer)
-                                Prompt-Info-Positive-Integer)))
+                                (Values Positive-Integer Prompt-Attributes))))
 (define (llm-input-number msgs title op)
   (: schema JSExpr)
   (define schema
@@ -100,16 +97,18 @@
           (case (car op)
             [(integer)
              (assert content integer?)
-             (prompt-info-integer title `((llm-reasoning . ,reasoning)) content)]
+             (values content `((llm-reasoning . ,reasoning)))]
             [(natural)
              (assert content natural?)
-             (prompt-info-natural title `((llm-reasoning . ,reasoning)) content)]
+             (values content `((llm-reasoning . ,reasoning)))]
             [(positive-integer)
              (assert content positive-integer?)
-             (prompt-info-positive-integer title `((llm-reasoning . ,reasoning)) content)])
+             (values content `((llm-reasoning . ,reasoning)))])
         (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)))))
 
-(: llm-range (-> (Listof LLM-Message) String (List 'range Integer Integer) Prompt-Info-Range))
+(: llm-range (case-> (-> (Listof LLM-Message) String (List 'range Positive-Integer Positive-Integer) (Values Positive-Integer Prompt-Attributes))
+                     (-> (Listof LLM-Message) String (List 'range Natural Natural) (Values Natural Prompt-Attributes))
+                     (-> (Listof LLM-Message) String (List 'range Integer Integer) (Values Integer Prompt-Attributes))))
 (define (llm-range msgs title op)
   (: schema JSExpr)
   (define schema
@@ -133,22 +132,21 @@
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
       (if (and (<= (second op) content)
                (<= content (third op)))
-          (prompt-info-range title `((llm-reasoning . ,reasoning)) content (second op) (third op))
+          (values content `((llm-reasoning . ,reasoning)))
           (error 'llm-range "range error")))))
 
-(: llm-random (-> String (List 'random Positive-Integer) Prompt-Info-Random))
+(: llm-random (-> String (List 'random Positive-Integer) (Values Natural Prompt-Attributes)))
 (define (llm-random title op)
   (let ([r (random (second op))])
     (case (current-console-random-prompt-display)
       [(show)
        (printf "* ~a\n" title)
        (printf "(random) > ~a\n" r)
-       (prompt-info-random title '() r (second op))]
+       (values r '())]
       [(hide)
-       (prompt-info-random title '() r (second op))])))
+       (values r '())])))
 
-
-(: call-with-retry (All (A) (-> Natural (-> A) A)))
+(: call-with-retry (All (A B) (-> Natural (-> (Values A B)) (Values A B))))
 (define (call-with-retry n proc)
   (let retry ([c : Natural n])
     (with-handlers ([exn:fail?

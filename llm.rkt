@@ -15,16 +15,20 @@
 (define (default-llm-messages role rec)
   (: prompt-messages (-> Prompt-Info (Listof LLM-Message)))
   (define (prompt-messages x)
-    (let ([prompt-text (if (prompt-info-choose? x)
+    (let* ([op (second x)]
+           [prompt-text (case (car op)
+                          [(choose)
                            (let ([out (open-output-string)]
-                                 [items (prompt-info-choose-items x)])
+                                 [items (if (procedure? (second op))
+                                            (third op)
+                                            (second op))])
                              (fprintf out "~a\n" (prompt-info-title x))
                              (for ([item items])
                                (if (pair? item)
                                    (fprintf out "  - ~a: ~a\n" (car item) (cadr item))
                                    (fprintf out "  - ~a\n" item)))
-                             (get-output-string out))
-                           (prompt-info-title x))])
+                             (get-output-string out))]
+                          [else (prompt-info-title x)])])
       (list (list role
                   (cond [(assoc 'llm-reasoning (prompt-info-attributes x))
                          => (lambda (p)
@@ -33,9 +37,9 @@
                         [else (format "~a" (prompt-info-value x))]))
             (list 'system
                   (format "~a" prompt-text)))))
-  (: auto-messages (-> (History-Auto T S) (Listof LLM-Message)))
+  (: auto-messages (-> (History-Record-Auto T S) (Listof LLM-Message)))
   (define (auto-messages x)
-    (let* ([e (history-edge-edge x)]
+    (let* ([e (history-record-edge x)]
            [prompt-text (node-prompt (edge-dom e))])
       (list* (list 'system
                    (if (edge-desc e)
@@ -44,27 +48,27 @@
              (if prompt-text
                  (list (list 'system (format "~a" prompt-text)))
                  '()))))
-  (: choose-messages (-> (History-Choose T S) (Listof LLM-Message)))
+  (: choose-messages (-> (History-Record-Choose T S) (Listof LLM-Message)))
   (define (choose-messages x)
-    (let* ([e (history-edge-edge x)]
+    (let* ([e (history-record-edge x)]
            [dom (edge-dom e)])
       (let ([prompt-text (let ([out (open-output-string)])
                            (fprintf out "~a\n" (or (node-prompt dom) (current-node-prompt)))
-                           (for ([item (history-choose-items x)])
+                           (for ([item (history-record-choices x)])
                              (if (edge-desc item)
                                  (fprintf out "  - ~a: ~a\n" (edge-name item) (edge-desc item))
                                  (fprintf out "  - ~a\n" (edge-name item))))
                            (get-output-string out))])
         (list (list role
-                    (cond [(assoc 'llm-reasoning (history-choose-attributes x))
+                    (cond [(assoc 'llm-reasoning (history-record-attributes x))
                            => (lambda (p)
                                 (format "{\"1_reasoning\": ~s, \"2_choice\": ~s}"
                                         (cdr p) (edge-name e)))]
                           [else (format "~a" (edge-name e))]))
               (list 'system (format "~a" prompt-text))))))
-  (: node-messages (-> (History-Node T S) (Listof LLM-Message)))
+  (: node-messages (-> (History-Record-Node T S) (Listof LLM-Message)))
   (define (node-messages x)
-    (let ([n (history-node-node x)])
+    (let ([n (history-record-node x)])
       (list (list 'system
                   (if (node-desc n)
                       (format "~a\n~a" (node-name n) (node-desc n))
@@ -74,12 +78,12 @@
     (list (list 'system (format "~a" (message-info-message m)))))
   (: event-messages (-> (U Prompt-Info Message-Info) (Listof LLM-Message)))
   (define (event-messages e)
-    (if (message-info? e)
-        (message-messages e)
-        (prompt-messages e)))
+    (case (car e)
+      [(message) (message-messages e)]
+      [(prompt) (prompt-messages e)]))
   (case (car rec)
-    [(node) (node-messages (cdr rec))]
-    [(auto) (append (append-map event-messages (history-item-events (cdr rec)))
-                    (auto-messages (cdr rec)))]
-    [(choose) (append (append-map event-messages (history-item-events (cdr rec)))
-                      (choose-messages (cdr rec)))]))
+    [(node) (node-messages rec)]
+    [(auto) (append (append-map event-messages (history-record-events rec))
+                    (auto-messages rec))]
+    [(choose) (append (append-map event-messages (history-record-events rec))
+                      (choose-messages rec))]))
