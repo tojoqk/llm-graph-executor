@@ -40,7 +40,7 @@
   (: auto-messages (-> (History-Record-Auto T S) (Listof LLM-Message)))
   (define (auto-messages x)
     (let* ([e (history-record-edge x)]
-           [prompt-text (node-prompt (edge-dom e))])
+           [prompt-text (node-prompt (edge-from e))])
       (list* (list 'system
                    (if (edge-desc e)
                        (format "(auto) ~a\n~a" (edge-name e) (edge-desc e))
@@ -51,9 +51,9 @@
   (: choose-messages (-> (History-Record-Choose T S) (Listof LLM-Message)))
   (define (choose-messages x)
     (let* ([e (history-record-edge x)]
-           [dom (edge-dom e)])
+           [from (edge-from e)])
       (let ([prompt-text (let ([out (open-output-string)])
-                           (fprintf out "~a\n" (or (node-prompt dom) (current-node-prompt)))
+                           (fprintf out "~a\n" (or (node-prompt from) (current-node-prompt)))
                            (for ([item (history-record-choices x)])
                              (if (edge-desc item)
                                  (fprintf out "  - ~a: ~a\n" (edge-name item) (edge-desc item))

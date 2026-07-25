@@ -30,7 +30,7 @@
   (define (record->llm-role rec)
     (case (car rec)
       [(node) (type->llm-role (node-type (history-record-node rec)))]
-      [(auto choose) (type->llm-role (node-type (edge-dom (history-record-edge rec))))]))
+      [(auto choose) (type->llm-role (node-type (edge-from (history-record-edge rec))))]))
   (: record->llm-messages (-> (History-Record T S) (Listof LLM-Message)))
   (define (record->llm-messages rec)
     (role-record->llm-messages (record->llm-role rec) rec))
@@ -55,12 +55,12 @@
         [(terminated) (terminate)]
         [(auto)
          (let* ([chosen-edge (auto-choose ne)]
-                [logger (make-history-logger 'auto chosen-edge (edge-cod chosen-edge))])
+                [logger (make-history-logger 'auto chosen-edge (edge-to chosen-edge))])
            (when (current-console-trace-display?)
              (displayln (format ">> [Auto] ~a" (edge-name chosen-edge))))
            (let ([next-st (console-llm-step st chosen-edge logger
                                             h type->llm-role history->llm-messages)])
-             (loop (edge-cod chosen-edge)
+             (loop (edge-to chosen-edge)
                    next-st
                    (list* (history-logger->history-record-node logger)
                           (history-logger->history-record-edge logger)
@@ -82,10 +82,10 @@
                                                   choose-pmt
                                                   (second ne)
                                                   attrs
-                                                  (edge-cod chosen-edge))]
+                                                  (edge-to chosen-edge))]
                      [next-st (console-llm-step st chosen-edge logger
                                                 h type->llm-role history->llm-messages)])
-                (loop (edge-cod chosen-edge)
+                (loop (edge-to chosen-edge)
                       next-st
                       (list* (history-logger->history-record-node logger)
                              (history-logger->history-record-edge logger)
@@ -99,28 +99,28 @@
     (history-logger-message-log! logger type val)
     (newline)
     (displayln val))
-  (let ([dom (edge-dom e)]
-        [cod (edge-cod e)]
+  (let ([from (edge-from e)]
+        [to (edge-to e)]
         [msgs (history->messages h)])
     (define st-1
       (parameterize ([current-prompt
-                      (case (type->role (node-type dom))
+                      (case (type->role (node-type from))
                         [(assistant) (console-llm-prompt/log logger 'edge msgs history->messages)]
                         [(user system) (console-prompt/log logger 'edge)])]
                      [current-message (message-with-log 'edge)])
         ((edge-trans e) st)))
     (when (current-console-trace-display?)
       (printf "--- Current Node: ~a (Graph: ~a) ---\n"
-              (node-name cod)
-              (node-graph-name cod)))
-    (cond [(node-desc cod) => displayln])
+              (node-name to)
+              (node-graph-name to)))
+    (cond [(node-desc to) => displayln])
     (define st-2
       (parameterize ([current-prompt
-                      (case (type->role (node-type cod))
+                      (case (type->role (node-type to))
                         [(assistant) (console-llm-prompt/log logger 'node msgs history->messages)]
                         [(user system) (console-prompt/log logger 'node)])]
                      [current-message (message-with-log 'node)])
-        ((node-trans cod) st-1)))
+        ((node-trans to) st-1)))
     st-2))
 
 (: llm-choose (All (T S)
@@ -131,7 +131,7 @@
 (define (llm-choose title ne msgs)
   (let* ([edges (second ne)]
          [edge-names ((inst map String (Edge T S)) edge-name edges)]
-         [dom (edge-dom (car edges))])
+         [from (edge-from (car edges))])
     (define-values (name attrs) ((console-llm-prompt msgs) title `(choose ,string? ,edge-names)))
     (cond [(findf (lambda ([edge : (Edge T S)]) (string=? name (edge-name edge))) edges)
            => (lambda ([e : (Edge T S)]) (values (edge-name e) attrs))]
