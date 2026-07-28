@@ -14,27 +14,27 @@
 
 (provide console-llm-run)
 
-(: console-llm-run (All (T S) (-> (Listof (Graph T S)) (Node T S) S
-                                  [#:llm-role (-> T LLM-Role)]
-                                  [#:llm-messages (-> LLM-Role
-                                                      (History-Record T S)
-                                                      (Listof LLM-Message))]
-                                  [#:journal Journal]
-                                  (Values (Node T S) S Journal))))
+(: console-llm-run (All (S) (-> (Listof (Graph S)) (Node S) S
+                                [#:llm-role (-> Symbol LLM-Role)]
+                                [#:llm-messages (-> LLM-Role
+                                                    (History-Record S)
+                                                    (Listof LLM-Message))]
+                                [#:journal Journal]
+                                (Values (Node S) S Journal))))
 (define (console-llm-run gs entry initial-state
                          #:llm-role [type->llm-role (const 'assistant)]
                          #:llm-messages [role-record->llm-messages
-                                         (inst default-llm-messages T S)]
+                                         (inst default-llm-messages S)]
                          #:journal [j '()])
-  (: record->llm-role (-> (History-Record T S) LLM-Role))
+  (: record->llm-role (-> (History-Record S) LLM-Role))
   (define (record->llm-role rec)
     (case (car rec)
       [(node) (type->llm-role (node-type (history-record-node rec)))]
       [(auto choose) (type->llm-role (node-type (edge-from (history-record-edge rec))))]))
-  (: record->llm-messages (-> (History-Record T S) (Listof LLM-Message)))
+  (: record->llm-messages (-> (History-Record S) (Listof LLM-Message)))
   (define (record->llm-messages rec)
     (role-record->llm-messages (record->llm-role rec) rec))
-  (: history->llm-messages (-> (History T S) (Listof LLM-Message)))
+  (: history->llm-messages (-> (History S) (Listof LLM-Message)))
   (define (history->llm-messages h)
     (append-map record->llm-messages h))
   (define-values (n st h) (replay gs entry initial-state j))
@@ -72,7 +72,7 @@
                          [(assistant) (llm-choose choose-pmt ne (history->llm-messages h))]
                          [(user system) (values
                                          (console-choose choose-pmt
-                                                         (map (inst edge-name T S) (second ne)))
+                                                         (map (inst edge-name S) (second ne)))
                                          '())])])
            (cond
              [(string? cmd)
@@ -92,7 +92,7 @@
                              h)))]
              [else (command-dispatch n st j cmd)]))]))))
 
-(: console-llm-step (All (T S) (-> S (Edge T S) (History-Logger T S) (History T S) (-> T LLM-Role) (-> (History T S) (Listof LLM-Message)) S)))
+(: console-llm-step (All (S) (-> S (Edge S) (History-Logger S) (History S) (-> Symbol LLM-Role) (-> (History S) (Listof LLM-Message)) S)))
 (define (console-llm-step st e logger h type->role history->messages)
   (: message-with-log (-> (U 'node 'edge) (-> Any Void)))
   (define ((message-with-log type) val)
@@ -123,25 +123,25 @@
         ((node-trans to) st-1)))
     st-2))
 
-(: llm-choose (All (T S)
+(: llm-choose (All (S)
                    (-> String
-                       (List 'choose (Pairof (Edge T S) (Listof (Edge T S))))
+                       (List 'choose (Pairof (Edge S) (Listof (Edge S))))
                        (Listof LLM-Message)
                        (Values String Prompt-Attributes))))
 (define (llm-choose title ne msgs)
   (let* ([edges (second ne)]
-         [edge-names ((inst map String (Edge T S)) edge-name edges)]
+         [edge-names ((inst map String (Edge S)) edge-name edges)]
          [from (edge-from (car edges))])
     (define-values (name attrs) ((console-llm-prompt msgs) title `(choose ,string? ,edge-names)))
-    (cond [(findf (lambda ([edge : (Edge T S)]) (string=? name (edge-name edge))) edges)
-           => (lambda ([e : (Edge T S)]) (values (edge-name e) attrs))]
+    (cond [(findf (lambda ([edge : (Edge S)]) (string=? name (edge-name edge))) edges)
+           => (lambda ([e : (Edge S)]) (values (edge-name e) attrs))]
           [else (error 'llm-choose "unexpected error")])))
 
-(: console-llm-prompt/log (All (T S)
-                               (-> (History-Logger T S)
+(: console-llm-prompt/log (All (S)
+                               (-> (History-Logger S)
                                    (U 'edge 'node)
                                    (Listof LLM-Message)
-                                   (-> (History T S) (Listof LLM-Message))
+                                   (-> (History S) (Listof LLM-Message))
                                    Prompt-Implementation)))
 (define ((console-llm-prompt/log logger type msgs history->messages) title op)
   (let ([msgs (case type
@@ -156,7 +156,7 @@
     (history-logger-prompt-log! logger type title op val attrs)
     (values val attrs)))
 
-(: console-prompt/log (All (T S) (-> (History-Logger T S) (U 'edge 'node) Prompt-Implementation)))
+(: console-prompt/log (All (S) (-> (History-Logger S) (U 'edge 'node) Prompt-Implementation)))
 (define ((console-prompt/log logger type) title op)
   (define-values (val attrs) (console-prompt title op))
   (history-logger-prompt-log! logger type title op val attrs)

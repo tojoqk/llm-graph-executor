@@ -11,7 +11,7 @@
 (define-predicate llm-role? LLM-Role)
 (define-type LLM-Message (List LLM-Role String))
 
-(: default-llm-messages (All (T S) (-> LLM-Role (History-Record T S) (Listof LLM-Message))))
+(: default-llm-messages (All (S) (-> LLM-Role (History-Record S) (Listof LLM-Message))))
 (define (default-llm-messages role rec)
   (: prompt-messages (-> Prompt-Info (Listof LLM-Message)))
   (define (prompt-messages x)
@@ -37,7 +37,7 @@
                         [else (format "~a" (prompt-info-value x))]))
             (list 'system
                   (format "~a" prompt-text)))))
-  (: auto-messages (-> (History-Record-Auto T S) (Listof LLM-Message)))
+  (: auto-messages (-> (History-Record-Auto S) (Listof LLM-Message)))
   (define (auto-messages x)
     (let* ([e (history-record-edge x)]
            [prompt-text (node-prompt (edge-from e))])
@@ -48,7 +48,7 @@
              (if prompt-text
                  (list (list 'system (format "~a" prompt-text)))
                  '()))))
-  (: choose-messages (-> (History-Record-Choose T S) (Listof LLM-Message)))
+  (: choose-messages (-> (History-Record-Choose S) (Listof LLM-Message)))
   (define (choose-messages x)
     (let* ([e (history-record-edge x)]
            [from (edge-from e)])
@@ -66,7 +66,7 @@
                                         (cdr p) (edge-name e)))]
                           [else (format "~a" (edge-name e))]))
               (list 'system (format "~a" prompt-text))))))
-  (: node-messages (-> (History-Record-Node T S) (Listof LLM-Message)))
+  (: node-messages (-> (History-Record-Node S) (Listof LLM-Message)))
   (define (node-messages x)
     (let ([n (history-record-node x)])
       (list (list 'system
