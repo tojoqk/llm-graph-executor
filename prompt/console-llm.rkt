@@ -9,24 +9,24 @@
 (provide console-llm-prompt)
 
 (: console-llm-prompt (-> (Listof LLM-Message) Prompt-Implementation))
-(define ((console-llm-prompt msgs) title op)
+(define ((console-llm-prompt msgs) meta op)
   (case (car op)
-    [(choose) (llm-choose msgs title op)]
-    [(string) (llm-string msgs title op)]
-    [(integer natural positive-integer) (llm-input-number msgs title op)]
-    [(range) (llm-range msgs title op)]
-    [(random) (llm-random title op)]))
+    [(choose) (llm-choose msgs meta op)]
+    [(string) (llm-string msgs meta op)]
+    [(integer natural positive-integer) (llm-input-number msgs meta op)]
+    [(range) (llm-range msgs meta op)]
+    [(random) (llm-random meta op)]))
 
 (: llm-choose (-> (Listof LLM-Message)
-                  String (U (List 'choose Procedure (Listof String))
-                            (List 'choose (Listof String)))
+                  Prompt-Meta (U (List 'choose Procedure (Listof String))
+                                 (List 'choose (Listof String)))
                   (Values String Prompt-Attributes)))
-(define (llm-choose msgs title op)
+(define (llm-choose msgs meta op)
   (let* ([choices (if (procedure? (second op))
                       (third op)
                       (second op))]
          [out : Output-Port (open-output-string)])
-    (fprintf out "* ~a\n" title)
+    (fprintf out "* ~a\n" (prompt-meta-title meta))
     (for ([choice choices])
       (fprintf out "- ~a\n" choice))
     (let ([text (get-output-string out)])
@@ -50,9 +50,9 @@
                 [else (error 'llm-choose "~a is not found" choice)]))))))
 
 (: llm-string (-> (Listof LLM-Message)
-                  String (List 'string)
+                  Prompt-Meta (List 'string)
                   (Values String Prompt-Attributes)))
-(define (llm-string msgs title op)
+(define (llm-string msgs meta op)
   (: schema JSExpr)
   (define schema
     (hash 'type "object"
@@ -60,22 +60,22 @@
                             '2_content (hash 'type "string"))
           'required (list "1_reasoning" "2_content")
           'additionalProperties #f))
-  (printf "* ~a\n" title)
+  (printf "* ~a\n" (prompt-meta-title meta))
   (with-retry (current-console-llm-prompt-retry-count)
-    (let* ([response (assert (request-llm schema (cons (list 'system title) msgs))
+    (let* ([response (assert (request-llm schema (cons (list 'system (prompt-meta-title meta)) msgs))
                              hash?)]
            [content (assert (hash-ref response '2_content) string?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
       (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)
       (values content `((llm-reasoning . ,reasoning))))))
 
-(: llm-input-number (case-> (-> (Listof LLM-Message) String (List 'integer)
+(: llm-input-number (case-> (-> (Listof LLM-Message) Prompt-Meta (List 'integer)
                                 (Values Integer Prompt-Attributes))
-                            (-> (Listof LLM-Message) String (List 'natural)
+                            (-> (Listof LLM-Message) Prompt-Meta (List 'natural)
                                 (Values Natural Prompt-Attributes))
-                            (-> (Listof LLM-Message) String (List 'positive-integer)
+                            (-> (Listof LLM-Message) Prompt-Meta (List 'positive-integer)
                                 (Values Positive-Integer Prompt-Attributes))))
-(define (llm-input-number msgs title op)
+(define (llm-input-number msgs meta op)
   (: schema JSExpr)
   (define schema
     (hash 'type "object"
@@ -88,9 +88,9 @@
                                                          [(positive-integer) '(minimum 1)]))))
           'required (list  "1_reasoning" "2_content")
           'additionalProperties #f))
-  (printf "* ~a\n" title)
+  (printf "* ~a\n" (prompt-meta-title meta))
   (with-retry (current-console-llm-prompt-retry-count)
-    (let* ([response (assert (request-llm schema (cons (list 'system title) msgs)) hash?)]
+    (let* ([response (assert (request-llm schema (cons (list 'system (prompt-meta-title meta)) msgs)) hash?)]
            [content (assert (hash-ref response '2_content) exact?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
       (begin0
@@ -106,10 +106,10 @@
              (values content `((llm-reasoning . ,reasoning)))])
         (printf "> ~a\n(reasoning: ~a)\n\n" content reasoning)))))
 
-(: llm-range (case-> (-> (Listof LLM-Message) String (List 'range Positive-Integer Positive-Integer) (Values Positive-Integer Prompt-Attributes))
-                     (-> (Listof LLM-Message) String (List 'range Natural Natural) (Values Natural Prompt-Attributes))
-                     (-> (Listof LLM-Message) String (List 'range Integer Integer) (Values Integer Prompt-Attributes))))
-(define (llm-range msgs title op)
+(: llm-range (case-> (-> (Listof LLM-Message) Prompt-Meta (List 'range Positive-Integer Positive-Integer) (Values Positive-Integer Prompt-Attributes))
+                     (-> (Listof LLM-Message) Prompt-Meta (List 'range Natural Natural) (Values Natural Prompt-Attributes))
+                     (-> (Listof LLM-Message) Prompt-Meta (List 'range Integer Integer) (Values Integer Prompt-Attributes))))
+(define (llm-range msgs meta op)
   (: schema JSExpr)
   (define schema
     (hash 'type "object"
@@ -119,11 +119,11 @@
                                              'maximum (third op)))
           'required (list  "1_reasoning" "2_content")
           'additionalProperties #f))
-  (printf "* ~a\n" title)
+  (printf "* ~a\n" (prompt-meta-title meta))
   (with-retry (current-console-llm-prompt-retry-count)
     (let* ([response (assert (request-llm schema (cons
                                                   (list 'system (format "* ~a\n(~a..~a)?"
-                                                                        title
+                                                                        (prompt-meta-title meta)
                                                                         (second op)
                                                                         (third op)))
                                                   msgs)) hash?)]
@@ -135,12 +135,12 @@
           (values content `((llm-reasoning . ,reasoning)))
           (error 'llm-range "range error")))))
 
-(: llm-random (-> String (List 'random Positive-Integer) (Values Natural Prompt-Attributes)))
-(define (llm-random title op)
+(: llm-random (-> Prompt-Meta (List 'random Positive-Integer) (Values Natural Prompt-Attributes)))
+(define (llm-random meta op)
   (let ([r (random (second op))])
     (case (current-console-random-prompt-display)
       [(show)
-       (printf "* ~a\n" title)
+       (printf "* ~a\n" (prompt-meta-title meta))
        (printf "(random) > ~a\n" r)
        (values r '())]
       [(hide)
