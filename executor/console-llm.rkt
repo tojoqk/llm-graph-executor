@@ -80,7 +80,7 @@
       (define (terminate)
         (when (current-console-trace-display?)
           (displayln ">> Terminated"))
-        (values n st j))
+        (values n st (history->journal h)))
       (let ([ne (next-edges gs st n)])
         (case (car ne)
           [(terminated) (terminate)]
@@ -119,7 +119,7 @@
                                     type->llm-role history->llm-messages))
                 (loop (edge-to chosen-edge) next-st (list* r/node r/edge h))]
                [else
-                (command-dispatch n st j cmd)]))]))))
+                (command-dispatch n st (history->journal h) cmd)]))]))))
   result-j)
 
 (: console-llm-step (All (S) (-> S (Edge S) (History S)
