@@ -51,7 +51,7 @@
                                                     (Record S)
                                                     (Listof LLM-Message))]
                                 [#:journal Journal]
-                                (Values (Node S) S Journal))))
+                                Journal)))
 (define (console-llm-run m
                          #:llm-role [type->llm-role (const 'assistant)]
                          #:llm-messages [role-record->llm-messages
@@ -70,56 +70,57 @@
     (append-map record->llm-messages h))
   (define-values (n st h) (replay m j))
   (define gs (model-graphs m))
-  (let loop ([n n]
-             [st st]
-             [h h])
-    (define command-dispatch
-      (console-command-dispatch m
-                                (lambda (_n _st [l-j : Journal])
-                                  (define-values (n* st* h*) (replay m l-j))
-                                  (loop n* st* h*))))
-    (define (terminate)
-      (when (current-console-trace-display?)
-        (displayln ">> Terminated"))
-      (values n st j))
-    (let ([ne (next-edges gs st n)])
-      (case (car ne)
-        [(terminated) (terminate)]
-        [(auto)
-         (let* ([chosen-edge (auto-choose ne)])
-           (when (current-console-trace-display?)
-             (displayln (format ">> [Auto] ~a" (edge-name chosen-edge))))
-           (define-values (r/edge r/node next-st)
-             (console-llm-step st chosen-edge h
-                               (lambda ([evs : (Listof Event)]) : (Record S)
-                                 (auto-edge-record evs chosen-edge))
-                               (lambda ([evs : (Listof Event)]) : (Record S)
-                                 (node-record evs (edge-to chosen-edge)))
-                               type->llm-role history->llm-messages))
-           (loop (edge-to chosen-edge)
-                 next-st
-                 (list* r/node r/edge h)))]
-        [(choose)
-         (define choose-pmt ((node-prompt n) st))
-         (let-values ([(cmd attrs)
-                       (case (type->llm-role (node-type n))
-                         [(assistant) (llm-choose choose-pmt ne (history->llm-messages h))]
-                         [(user system) (values
-                                         (console-choose choose-pmt
-                                                         (map (inst edge-name S) (second ne)))
-                                         '())])])
-           (cond
-             [(string? cmd)
-              (define chosen-edge (find-edge (second ne) cmd))
-              (define-values (r/edge r/node next-st)
-                (console-llm-step st chosen-edge h
-                                  (lambda ([evs : (Listof Event)]) : (Record S)
-                                    (choose-edge-record evs chosen-edge choose-pmt (second ne) attrs))
-                                  (lambda ([evs : (Listof Event)]) : (Record S)
-                                    (node-record evs (edge-to chosen-edge)))
-                                  type->llm-role history->llm-messages))
-              (loop (edge-to chosen-edge) next-st (list* r/node r/edge h))]
-             [else (command-dispatch n st j cmd)]))]))))
+  (define-values (_n _st result-j)
+    (let loop : (Values (Node S) S Journal) ([n n] [st st] [h h])
+      (define command-dispatch
+        (console-command-dispatch m
+                                  (lambda (_n _st [l-j : Journal])
+                                    (define-values (n* st* h*) (replay m l-j))
+                                    (loop n* st* h*))))
+      (define (terminate)
+        (when (current-console-trace-display?)
+          (displayln ">> Terminated"))
+        (values n st j))
+      (let ([ne (next-edges gs st n)])
+        (case (car ne)
+          [(terminated) (terminate)]
+          [(auto)
+           (let* ([chosen-edge (auto-choose ne)])
+             (when (current-console-trace-display?)
+               (displayln (format ">> [Auto] ~a" (edge-name chosen-edge))))
+             (define-values (r/edge r/node next-st)
+               (console-llm-step st chosen-edge h
+                                 (lambda ([evs : (Listof Event)]) : (Record S)
+                                   (auto-edge-record evs chosen-edge))
+                                 (lambda ([evs : (Listof Event)]) : (Record S)
+                                   (node-record evs (edge-to chosen-edge)))
+                                 type->llm-role history->llm-messages))
+             (loop (edge-to chosen-edge)
+                   next-st
+                   (list* r/node r/edge h)))]
+          [(choose)
+           (define choose-pmt ((node-prompt n) st))
+           (let-values ([(cmd attrs)
+                         (case (type->llm-role (node-type n))
+                           [(assistant) (llm-choose choose-pmt ne (history->llm-messages h))]
+                           [(user system) (values
+                                           (console-choose choose-pmt
+                                                           (map (inst edge-name S) (second ne)))
+                                           '())])])
+             (cond
+               [(string? cmd)
+                (define chosen-edge (find-edge (second ne) cmd))
+                (define-values (r/edge r/node next-st)
+                  (console-llm-step st chosen-edge h
+                                    (lambda ([evs : (Listof Event)]) : (Record S)
+                                      (choose-edge-record evs chosen-edge choose-pmt (second ne) attrs))
+                                    (lambda ([evs : (Listof Event)]) : (Record S)
+                                      (node-record evs (edge-to chosen-edge)))
+                                    type->llm-role history->llm-messages))
+                (loop (edge-to chosen-edge) next-st (list* r/node r/edge h))]
+               [else
+                (command-dispatch n st j cmd)]))]))))
+  result-j)
 
 (: console-llm-step (All (S) (-> S (Edge S) (History S)
                                  (-> (Listof Event) (Record S))
