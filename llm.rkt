@@ -40,15 +40,11 @@
                   (format "~a" prompt-text)))))
   (: auto-messages (-> (Auto-Edge-Record S) (Listof LLM-Message)))
   (define (auto-messages x)
-    (let* ([e (record-edge x)]
-           [prompt-text (node-prompt (edge-from e))])
-      (list* (list 'system
-                   (if (edge-desc e)
-                       (format "(auto) ~a\n~a" (edge-name e) (edge-desc e))
-                       (format "(auto) ~a" (edge-name e))))
-             (if prompt-text
-                 (list (list 'system (format "~a" prompt-text)))
-                 '()))))
+    (let* ([e (record-edge x)])
+      (list (list 'system
+                  (if (edge-desc e)
+                      (format "(auto) ~a\n~a" (edge-name e) (edge-desc e))
+                      (format "(auto) ~a" (edge-name e)))))))
   (: choose-messages (-> (Choose-Edge-Record S) (Listof LLM-Message)))
   (define (choose-messages x)
     (let* ([e (record-edge x)]
@@ -83,7 +79,8 @@
       [(message) (message-messages e)]
       [(prompt) (prompt-messages e)]))
   (case (car rec)
-    [(node) (node-messages rec)]
+    [(node) (append (append-map event-messages (record-events rec))
+                    (node-messages rec))]
     [(auto) (append (append-map event-messages (record-events rec))
                     (auto-messages rec))]
     [(choose) (append (append-map event-messages (record-events rec))
