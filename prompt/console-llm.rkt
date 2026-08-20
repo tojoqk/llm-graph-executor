@@ -18,9 +18,9 @@
     [(random) (llm-random meta op)]))
 
 (: llm-choose (-> (Listof LLM-Message)
-                  Prompt-Meta (U (List 'choose Procedure (Listof String))
-                                 (List 'choose (Listof String)))
-                  (Values String Prompt-Attributes)))
+                  Prompt-Meta (U (List 'choose Procedure (Listof Symbol))
+                                 (List 'choose (Listof Symbol)))
+                  (Values Symbol Prompt-Attributes)))
 (define (llm-choose msgs meta op)
   (let* ([choices (if (procedure? (second op))
                       (third op)
@@ -35,14 +35,14 @@
         (hash 'type "object"
               'properties (hash '1_reasoning (hash 'type "string")
                                 '2_choice (hash 'type "string"
-                                                'enum choices))
+                                                'enum (map symbol->string choices)))
               'required (list "1_reasoning" "2_choice")
               'additionalProperties #f))
       (display text)
       (with-retry (current-console-llm-prompt-retry-count)
         (let* ([response (assert (request-llm schema (cons (list 'system text) msgs))
                                  hash?)]
-               [choice (assert (hash-ref response '2_choice) string?)]
+               [choice (string->symbol (assert (hash-ref response '2_choice) string?))]
                [reasoning (assert (hash-ref response '1_reasoning) string?)])
           (cond [(member choice choices)
                  (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)

@@ -83,7 +83,12 @@
         (values n st (history->journal h)))
       (let ([ne (next-edges gs st n)])
         (case (car ne)
-          [(terminated) (terminate)]
+          [(terminated auto-conflicted)
+           (case (car ne)
+             [(auto-conflicted)
+              (newline)
+              (printf ">> Auto conflicted: ~s" (cdr ne))])
+           (terminate)]
           [(auto)
            (let* ([chosen-edge (auto-choose ne)])
              (when (current-console-trace-display?)
