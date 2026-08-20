@@ -179,7 +179,8 @@
 (define (llm-choose meta ne msgs)
   (let* ([edges (second ne)]
          [edge-names ((inst map String (Edge S)) edge-name edges)])
-    (define-values (name attrs) ((console-llm-prompt msgs) meta `(choose ,string? ,edge-names)))
+    (define-values (name/sym attrs) ((console-llm-prompt msgs) meta `(choose ,(map string->symbol edge-names))))
+    (define name (symbol->string name/sym))
     (cond [(findf (lambda ([edge : (Edge S)]) (string=? name (edge-name edge))) edges)
            => (lambda ([e : (Edge S)]) (values (edge-name e) attrs))]
           [else (error 'llm-choose "unexpected error")])))
