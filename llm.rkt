@@ -1,9 +1,9 @@
 #lang typed/racket
 
-(require graph-executor/graph)
-(require graph-executor/history)
-(require graph-executor/prompt)
-(require graph-executor/message)
+(require graph-executor/plugin/graph)
+(require graph-executor/plugin/trace)
+(require graph-executor/plugin/prompt)
+(require graph-executor/plugin/message)
 
 (provide LLM-Role llm-role? LLM-Message default-llm-messages)
 
@@ -11,9 +11,9 @@
 (define-predicate llm-role? LLM-Role)
 (define-type LLM-Message (List LLM-Role String))
 
-(: default-llm-messages (All (S) (-> LLM-Role (Record S) (Listof LLM-Message))))
+(: default-llm-messages (-> LLM-Role Record (Listof LLM-Message)))
 (define (default-llm-messages role rec)
-  (: prompt-messages (-> Prompt-Info (Listof LLM-Message)))
+  (: prompt-messages (-> Prompt-Result (Listof LLM-Message)))
   (define (prompt-messages x)
     (let* ([op (second x)]
            [prompt-text (case (car op)
@@ -23,65 +23,64 @@
                                             (third op)
                                             (second op))])
                              (fprintf out "~a\n"
-                                      (prompt-meta-title (prompt-info-meta x)))
+                                      (prompt-info-title (prompt-result-info x)))
                              (for ([item items])
                                (if (pair? item)
                                    (fprintf out "  - ~a: ~a\n" (car item) (cadr item))
                                    (fprintf out "  - ~a\n" item)))
                              (get-output-string out))]
-                          [else (prompt-meta-title (prompt-info-meta x))])])
+                          [else (prompt-info-title (prompt-result-info x))])])
       (list (list role
-                  (cond [(assoc 'llm-reasoning (prompt-info-attributes x))
+                  (cond [(prompt-result-extra x)
                          => (lambda (p)
                               (format "{\"1_reasoning\": ~s, \"2_content\": ~s}"
-                                      (prompt-info-value x) (cdr p)))]
-                        [else (format "~a" (prompt-info-value x))]))
+                                       p (prompt-result-value x)))]
+                        [else (format "~a" (prompt-result-value x))]))
             (list 'system
                   (format "~a" prompt-text)))))
-  (: auto-messages (-> (Auto-Edge-Record S) (Listof LLM-Message)))
+  (: auto-messages (-> Auto-Edge-Record (Listof LLM-Message)))
   (define (auto-messages x)
-    (let* ([e (record-edge x)])
+    (let* ([e (edge-record-edge-info x)])
       (list (list 'system
-                  (if (edge-desc e)
-                      (format "(auto) ~a\n~a" (edge-name e) (edge-desc e))
-                      (format "(auto) ~a" (edge-name e)))))))
-  (: choose-messages (-> (Choose-Edge-Record S) (Listof LLM-Message)))
+                  (if (edge-info-desc e)
+                      (format "(auto) ~a\n~a" (edge-info-name e) (edge-info-desc e))
+                      (format "(auto) ~a" (edge-info-name e)))))))
+  (: choose-messages (-> Choose-Edge-Record (Listof LLM-Message)))
   (define (choose-messages x)
-    (let* ([e (record-edge x)]
-           [from (edge-from e)])
+    (let* ([e (edge-record-edge-info x)]
+           [from (edge-info-from e)])
       (let ([prompt-text (let ([out (open-output-string)])
-                           (fprintf out "~a\n" (or (node-prompt from) (current-node-prompt)))
-                           (for ([item (record-choices x)])
-                             (if (edge-desc item)
-                                 (fprintf out "  - ~a: ~a\n" (edge-name item) (edge-desc item))
-                                 (fprintf out "  - ~a\n" (edge-name item))))
+                           (fprintf out "~a\n" (choose-edge-record-prompt x))
+                           (for ([item (choose-edge-record-choices x)])
+                             (if (edge-info-desc item)
+                                 (fprintf out "  - ~a: ~a\n" (edge-info-name item) (edge-info-desc item))
+                                 (fprintf out "  - ~a\n" (edge-info-name item))))
                            (get-output-string out))])
         (list (list role
-                    (cond [(assoc 'llm-reasoning (record-attributes x))
-                           => (lambda (p)
+                    (cond [(choose-edge-record-extra x)
+                           => (lambda (reasoning)
                                 (format "{\"1_reasoning\": ~s, \"2_choice\": ~s}"
-                                        (cdr p) (edge-name e)))]
-                          [else (format "~a" (edge-name e))]))
+                                        reasoning (edge-info-name e)))]
+                          [else (format "~a" (edge-info-name e))]))
               (list 'system (format "~a" prompt-text))))))
-  (: node-messages (-> (Node-Record S) (Listof LLM-Message)))
+  (: node-messages (-> Node-Record (Listof LLM-Message)))
   (define (node-messages x)
-    (let ([n (record-node x)])
+    (let ([n (node-record-node-info x)])
       (list (list 'system
-                  (if (node-desc n)
-                      (format "~a\n~a" (node-name n) (node-desc n))
-                      (format "~a" (node-name n)))))))
-  (: message-messages (-> Message-Info (Listof LLM-Message)))
+                  (if (node-info-desc n)
+                      (format "~a\n~a" (node-info-name n) (node-info-desc n))
+                      (format "~a" (node-info-name n)))))))
+  (: message-messages (-> Message-Result (Listof LLM-Message)))
   (define (message-messages m)
-    (list (list 'system (format "~a" (message-info-message m)))))
-  (: event-messages (-> (U Prompt-Info Message-Info) (Listof LLM-Message)))
+    (list (list 'system (format "~a" (message-result-message m)))))
+  (: event-messages (-> (U Prompt-Result Message-Result) (Listof LLM-Message)))
   (define (event-messages e)
     (case (car e)
       [(message) (message-messages e)]
       [(prompt) (prompt-messages e)]))
-  (case (car rec)
-    [(node) (append (append-map event-messages (record-events rec))
-                    (node-messages rec))]
-    [(auto) (append (append-map event-messages (record-events rec))
-                    (auto-messages rec))]
-    [(choose) (append (append-map event-messages (record-events rec))
-                      (choose-messages rec))]))
+  (cond [(node-record? rec) (append (append-map event-messages (node-record-events rec))
+                                    (node-messages rec))]
+        [(auto-edge-record? rec) (append (append-map event-messages (edge-record-events rec))
+                                         (auto-messages rec))]
+        [(choose-edge-record? rec) (append (append-map event-messages (edge-record-events rec))
+                                           (choose-messages rec))]))
