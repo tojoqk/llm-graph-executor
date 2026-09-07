@@ -39,12 +39,15 @@
       (with-retry (current-console-llm-prompt-retry-count)
         (let* ([response (assert (request-llm schema (cons (list 'system text) msgs))
                                  hash?)]
-               [choice (string->symbol (assert (hash-ref response '2_choice) string?))]
+               [content (assert (hash-ref response '2_choice) string?)]
                [reasoning (assert (hash-ref response '1_reasoning) string?)])
-          (cond [(member choice choices)
-                 (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
-                 (values choice `((llm-reasoning . ,reasoning)))]
-                [else (error 'llm-choose "~a is not found" choice)]))))))
+          (cond [(findf (lambda ([choice : Symbol])
+                          (string=? (show choice) content))
+                        choices)
+                 => (lambda ([choice : Symbol])
+                      (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
+                      (values choice `((llm-reasoning . ,reasoning))))]
+                [else (error 'llm-choose "~a is not found" content)]))))))
 
 (: llm-string (-> (Listof LLM-Message)
                   Prompt-Info (List 'string)
