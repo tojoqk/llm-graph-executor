@@ -16,6 +16,32 @@
 
 (provide console-llm-run)
 
+(struct console-llm-config ([commands :  (Listof Console-Command)]
+                            [trace-display : (U 'show 'hide)]
+                            [chooser : (-> Node-Info (U 'interactive 'random))]
+                            [llm-role : (-> Node-Info LLM-Role)]
+                            [llm-messages : (-> LLM-Role Record (Listof LLM-Message))])
+  #:type-name Console-LLM-Config)
+
+(: console-llm-config->console-config (-> Console-LLM-Config Console-Config))
+(define (console-llm-config->console-config config)
+  (console-config #:commands (console-llm-config-commands config)
+                  #:chooser (console-llm-config-chooser config)
+                  #:trace-display (console-llm-config-trace-display config)))
+
+(: console-llm-config* (-> [#:commands (Listof Console-Command)]
+                           [#:trace-display (U 'show 'hide)]
+                           [#:chooser (-> Node-Info (U 'interactive 'random))]
+                           [#:llm-role (-> Node-Info LLM-Role)]
+                           [#:llm-messages (-> LLM-Role Record (Listof LLM-Message))]
+                           Console-LLM-Config))
+(define (console-llm-config* #:commands [commands default-console-commands]
+                             #:trace-display [trace-display 'show]
+                             #:chooser [chooser default-console-chooser]
+                             #:llm-role [llm-role (lambda (_) 'assistant)]
+                             #:llm-messages [llm-messages default-llm-messages])
+  (console-llm-config commands trace-display chooser llm-role llm-messages))
+
 (define-type Event (U Prompt-Result Message-Result))
 (define-type Pmt (Pairof Prompt-Value Any))
 
@@ -45,20 +71,18 @@
   (values call-with-event-emitter emit peek))
 
 (: console-llm-run (All (S) (-> (Model S)
-                                [#:llm-role (-> Symbol LLM-Role)]
-                                [#:llm-messages (-> LLM-Role
-                                                    Record
-                                                    (Listof LLM-Message))]
+                                [#:config Console-LLM-Config]
                                 [#:journal (Listof Journal-Entry)]
                                 (Listof Journal-Entry))))
 (define (console-llm-run m
-                         #:llm-role [type->llm-role (const 'assistant)]
-                         #:llm-messages [role-record->llm-messages default-llm-messages]
+                         #:config [config (console-llm-config*)]
                          #:journal [j '()])
+  (define role-record->llm-messages (console-llm-config-llm-messages config))
+  (define node-info->llm-role (console-llm-config-llm-role config))
   (: record->llm-role (-> Record LLM-Role))
   (define (record->llm-role rec)
-    (cond [(node-record? rec) (type->llm-role (node-info-type (node-record-node-info rec)))]
-          [(edge-record? rec) (type->llm-role (node-info-type (edge-info-from (edge-record-edge-info rec))))]))
+    (cond [(node-record? rec) (node-info->llm-role (node-record-node-info rec))]
+          [(edge-record? rec) (node-info->llm-role (edge-info-from (edge-record-edge-info rec)))]))
   (: record->llm-messages (-> Record (Listof LLM-Message)))
   (define (record->llm-messages rec)
     (role-record->llm-messages (record->llm-role rec) rec))
@@ -75,21 +99,26 @@
                                     (define-values (n* st* h*) (trace m l-j))
                                     (loop n* st* h*))))
       (define (terminate)
-        (displayln ">> Terminated")
+        (case (console-llm-config-trace-display config)
+          [(show) (displayln ">> Terminated")])
         (values n st (trace->journal h)))
       (let ([ne (next-edges gs st n)])
         (case (car ne)
           [(terminated auto-conflicted)
-           (case (car ne)
-             [(auto-conflicted)
-              (newline)
-              (printf ">> Auto conflicted: ~s" (cdr ne))])
+           (case (console-llm-config-trace-display config)
+             [(show)
+              (case (car ne)
+                [(auto-conflicted)
+                 (newline)
+                 (printf ">> Auto conflicted: ~s" (cdr ne))])])
            (terminate)]
           [(auto)
            (let* ([chosen-edge (auto-choose ne)])
-             (displayln (format ">> [Auto] ~a" (edge-name chosen-edge)))
+             (case (console-llm-config-trace-display config)
+               [(show) (displayln (format ">> [Auto] ~a" (edge-name chosen-edge)))])
              (define-values (r/edge r/node next-st)
                (console-llm-step st chosen-edge h
+                                 config
                                  (lambda ([evs : (Listof Event)]) : Record
                                    (auto-edge-record (edge-id chosen-edge)
                                                      (edge-edge-info chosen-edge)
@@ -98,26 +127,29 @@
                                    (node-record (node-id (edge-to chosen-edge))
                                                 (node-node-info (edge-to chosen-edge))
                                                 evs))
-                                 type->llm-role trace->llm-messages))
+                                 node-info->llm-role trace->llm-messages))
              (loop (edge-to chosen-edge)
                    next-st
                    (list* r/node r/edge h)))]
-          [(choose)
-           (define choose-pmt ((node-prompt n) st))
+          [(choice)
+           (define choice-pmt ((node-prompt n) st))
            (let-values ([(cmd extra)
-                         (case (type->llm-role (node-type n))
-                           [(assistant) (llm-choose choose-pmt ne (trace->llm-messages h))]
+                         (case (node-info->llm-role (node-node-info n))
+                           [(assistant) (llm-choose choice-pmt ne (trace->llm-messages h))]
                            [(user system)
-                            (values (console-choose 'choose (console-config) choose-pmt (second ne))
+                            (values (console-choose 'interactive
+                                                    (console-llm-config->console-config config)
+                                                    choice-pmt (second ne))
                                     #f)])])
              (cond
                [(edge? cmd)
                 (define chosen-edge cmd)
                 (define-values (r/edge r/node next-st)
                   (console-llm-step st chosen-edge h
+                                    config
                                     (lambda ([evs : (Listof Event)]) : Record
-                                      (choose-edge-record (edge-id chosen-edge) (edge-edge-info chosen-edge) evs
-                                                          choose-pmt
+                                      (choice-edge-record (edge-id chosen-edge) (edge-edge-info chosen-edge) evs
+                                                          choice-pmt
                                                           (let ([choices (second ne)])
                                                             (cons (edge-edge-info (car choices))
                                                                   (map (inst edge-edge-info S) (cdr choices))))
@@ -126,19 +158,20 @@
                                       (node-record (node-id (edge-to chosen-edge))
                                                    (node-node-info (edge-to chosen-edge))
                                                    evs))
-                                    type->llm-role trace->llm-messages))
+                                    node-info->llm-role trace->llm-messages))
                 (loop (edge-to chosen-edge) next-st (list* r/node r/edge h))]
                [else
                 (command-dispatch n st (trace->journal h) cmd)]))]))))
   result-j)
 
 (: console-llm-step (All (S) (-> S (Edge S) Trace
+                                 Console-LLM-Config
                                  (-> (Listof Event) Record)
                                  (-> (Listof Event) Record)
-                                 (-> Symbol LLM-Role)
+                                 (-> Node-Info LLM-Role)
                                  (-> Trace (Listof LLM-Message))
                                  (Values Record Record S))))
-(define (console-llm-step st e h convert/edge convert/node type->role trace->messages)
+(define (console-llm-step st e h config convert/edge convert/node node-info->role trace->messages)
   (: message-with-log (-> (-> Event Void) (-> Any Void)))
   (define ((message-with-log emit) val)
     (emit (message-result val))
@@ -155,7 +188,7 @@
        (thunk
         (let ([msgs (trace->messages h)])
           (parameterize ([current-prompt
-                          (case (type->role (node-type from))
+                          (case (node-info->role (node-node-info from))
                             [(assistant) (console-llm-prompt/log emit/edge peek/edge msgs trace->messages)]
                             [(user system) (console-prompt/log emit/edge)])]
                          [current-message (message-with-log emit/edge)])
@@ -168,7 +201,7 @@
        (thunk
         (let ([msgs (trace->messages (cons r/edge h))])
           (parameterize ([current-prompt
-                          (case (type->role (node-type to))
+                          (case (node-info->role (node-node-info to))
                             [(assistant) (console-llm-prompt/log emit/node peek/node msgs trace->messages)]
                             [(user system) (console-prompt/log emit/node)])]
                          [current-message (message-with-log emit/node)])
@@ -177,7 +210,7 @@
 
 (: llm-choose (All (S)
                    (-> String
-                       (List 'choose (Pairof (Edge S) (Listof (Edge S))))
+                       (List 'choice (Pairof (Edge S) (Listof (Edge S))))
                        (Listof LLM-Message)
                        (Values (Edge S) Any))))
 (define (llm-choose title ne msgs)

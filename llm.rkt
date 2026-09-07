@@ -17,7 +17,7 @@
   (define (prompt-messages x)
     (let* ([op (second x)]
            [prompt-text (case (car op)
-                          [(choose)
+                          [(choice)
                            (let ([out (open-output-string)]
                                  [items (if (procedure? (second op))
                                             (third op)
@@ -45,19 +45,19 @@
                   (if (edge-info-desc e)
                       (format "(auto) ~a\n~a" (edge-info-name e) (edge-info-desc e))
                       (format "(auto) ~a" (edge-info-name e)))))))
-  (: choose-messages (-> Choose-Edge-Record (Listof LLM-Message)))
-  (define (choose-messages x)
+  (: choice-messages (-> Choice-Edge-Record (Listof LLM-Message)))
+  (define (choice-messages x)
     (let* ([e (edge-record-edge-info x)]
            [from (edge-info-from e)])
       (let ([prompt-text (let ([out (open-output-string)])
-                           (fprintf out "~a\n" (choose-edge-record-prompt x))
-                           (for ([item (choose-edge-record-choices x)])
+                           (fprintf out "~a\n" (choice-edge-record-prompt x))
+                           (for ([item (choice-edge-record-choices x)])
                              (if (edge-info-desc item)
                                  (fprintf out "  - ~a: ~a\n" (edge-info-name item) (edge-info-desc item))
                                  (fprintf out "  - ~a\n" (edge-info-name item))))
                            (get-output-string out))])
         (list (list role
-                    (cond [(choose-edge-record-extra x)
+                    (cond [(choice-edge-record-extra x)
                            => (lambda (reasoning)
                                 (format "{\"1_reasoning\": ~s, \"2_choice\": ~s}"
                                         reasoning (edge-info-name e)))]
@@ -82,5 +82,5 @@
                                     (node-messages rec))]
         [(auto-edge-record? rec) (append (append-map event-messages (edge-record-events rec))
                                          (auto-messages rec))]
-        [(choose-edge-record? rec) (append (append-map event-messages (edge-record-events rec))
-                                           (choose-messages rec))]))
+        [(choice-edge-record? rec) (append (append-map event-messages (edge-record-events rec))
+                                           (choice-messages rec))]))
