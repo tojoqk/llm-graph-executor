@@ -45,7 +45,7 @@
                           (string=? (show choice) content))
                         choices)
                  => (lambda ([choice : Symbol])
-                      (printf "> ~a\n(reasoning: ~a)\n\n" choice reasoning)
+                      (printf "> ~a\n(reasoning: ~a)\n\n" (show choice) reasoning)
                       (values choice `((llm-reasoning . ,reasoning))))]
                 [else (error 'llm-choose "~a is not found" content)]))))))
 
