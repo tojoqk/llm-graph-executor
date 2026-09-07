@@ -137,9 +137,16 @@
            (define choice-pmt ((node-prompt n) st))
            (let-values ([(cmd extra)
                          (case (node-info->llm-role (node-node-info n))
-                           [(assistant) (llm-choose choice-pmt ne (trace->llm-messages h))]
+                           [(assistant)
+                            (case ((console-llm-config-chooser config) (node-node-info n))
+                              [(interactive) (llm-choose choice-pmt ne (trace->llm-messages h))]
+                              [(random)
+                               (values (console-choose ((console-llm-config-chooser config) (node-node-info n))
+                                                       (console-llm-config->console-config config)
+                                                       choice-pmt (second ne))
+                                       #f)])]
                            [(user system)
-                            (values (console-choose 'interactive
+                            (values (console-choose ((console-llm-config-chooser config) (node-node-info n))
                                                     (console-llm-config->console-config config)
                                                     choice-pmt (second ne))
                                     #f)])])
