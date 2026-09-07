@@ -29,12 +29,19 @@
                                    (fprintf out "  - ~a: ~a\n" (car item) (cadr item))
                                    (fprintf out "  - ~a\n" item)))
                              (get-output-string out))]
-                          [else (prompt-info-title (prompt-result-info x))])])
+                          [else (prompt-info-title (prompt-result-info x))])]
+           [extra (prompt-result-extra x)])
       (list (list role
-                  (cond [(prompt-result-extra x)
-                         => (lambda (p)
-                              (format "{\"1_reasoning\": ~s, \"2_content\": ~s}"
-                                       p (prompt-result-value x)))]
+                  (cond [(and (list? extra)
+                              (findf (lambda (pair)
+                                       (and (pair? pair)
+                                            (eq? (car pair) 'llm-reasoning)))
+                                     extra))
+                         => (lambda (pair)
+                              (assert pair pair?)
+                              (format "{\"1_reasoning\": ~s, \"2_choice\": ~s}"
+                                      (cdr pair)
+                                      (prompt-result-value x)))]
                         [else (format "~a" (prompt-result-value x))]))
             (list 'system
                   (format "~a" prompt-text)))))
@@ -55,12 +62,18 @@
                              (if (edge-info-desc item)
                                  (fprintf out "  - ~a: ~a\n" (edge-info-name item) (edge-info-desc item))
                                  (fprintf out "  - ~a\n" (edge-info-name item))))
-                           (get-output-string out))])
+                           (get-output-string out))]
+            [extra (choice-edge-record-extra x)])
         (list (list role
-                    (cond [(choice-edge-record-extra x)
-                           => (lambda (reasoning)
+                    (cond [(and (list? extra)
+                                (findf (lambda (pair)
+                                         (and (pair? pair)
+                                              (eq? (car pair) 'llm-reasoning)))
+                                       extra))
+                           => (lambda (pair)
+                                (assert pair pair?)
                                 (format "{\"1_reasoning\": ~s, \"2_choice\": ~s}"
-                                        reasoning (edge-info-name e)))]
+                                        (cdr pair) (edge-info-name e)))]
                           [else (format "~a" (edge-info-name e))]))
               (list 'system (format "~a" prompt-text))))))
   (: node-messages (-> Node-Record (Listof LLM-Message)))
