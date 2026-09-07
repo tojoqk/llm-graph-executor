@@ -14,7 +14,9 @@
 (require "../prompt/console-llm.rkt")
 (require "../llm.rkt")
 
-(provide console-llm-run)
+(provide console-llm-run
+         Console-LLM-Config
+         (rename-out [console-llm-config* console-llm-config]))
 
 (struct console-llm-config ([commands :  (Listof Console-Command)]
                             [trace-display : (U 'show 'hide)]
