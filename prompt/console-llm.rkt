@@ -25,7 +25,7 @@
          [out : Output-Port (open-output-string)])
     (fprintf out "* ~a\n" (prompt-info-title info))
     (for ([choice choices])
-      (fprintf out "- ~a\n" choice))
+      (fprintf out "- ~a\n" (show choice)))
     (let ([text (get-output-string out)])
       (: schema JSExpr)
       (define schema
