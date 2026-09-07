@@ -1,7 +1,6 @@
 #lang typed/racket
 
 (require graph-executor/plugin/prompt)
-(require graph-executor/plugin/executor/console)
 (require "../llm/api.rkt")
 (require "../llm.rkt")
 (require typed/json)
