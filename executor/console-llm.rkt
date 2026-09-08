@@ -74,8 +74,8 @@
 
 (: console-llm-run (All (S) (-> (Model S)
                                 [#:config Console-LLM-Config]
-                                [#:journal (Listof Journal-Entry)]
-                                (Listof Journal-Entry))))
+                                [#:journal Journal]
+                                Journal)))
 (define (console-llm-run m
                          #:config [config (console-llm-config*)]
                          #:journal [j '()])
@@ -94,10 +94,10 @@
   (define-values (n st h) (trace m j))
   (define gs (model-graphs m))
   (define-values (_n _st result-j)
-    (let loop : (Values (Node S) S (Listof Journal-Entry)) ([n n] [st st] [h h])
+    (let loop : (Values (Node S) S Journal) ([n n] [st st] [h h])
       (define command-dispatch
         (console-command-dispatch m
-                                  (lambda (_n _st [l-j : (Listof Journal-Entry)])
+                                  (lambda (_n _st [l-j : Journal])
                                     (define-values (n* st* h*) (trace m l-j))
                                     (loop n* st* h*))))
       (define (terminate)
