@@ -17,8 +17,8 @@
     [(random) (llm-random info op)]))
 
 (: llm-choose (-> (Listof LLM-Message)
-                  Prompt-Info (U (List 'choose Procedure (Listof Symbol) (-> Symbol String)))
-                  (Values Symbol Any)))
+                  Prompt-Info (U (List 'choose Procedure (Listof Prompt-Value) (-> Prompt-Value String)))
+                  (Values Prompt-Value Any)))
 (define (llm-choose msgs info op)
   (let* ([choices (third op)]
          [show (fourth op)]
@@ -41,10 +41,10 @@
                                  hash?)]
                [content (assert (hash-ref response '2_choice) string?)]
                [reasoning (assert (hash-ref response '1_reasoning) string?)])
-          (cond [(findf (lambda ([choice : Symbol])
+          (cond [(findf (lambda ([choice : Prompt-Value])
                           (string=? (show choice) content))
                         choices)
-                 => (lambda ([choice : Symbol])
+                 => (lambda ([choice : Prompt-Value])
                       (printf "> ~a\n(reasoning: ~a)\n\n" (show choice) reasoning)
                       (values choice `((llm-reasoning . ,reasoning))))]
                 [else (error 'llm-choose "~a is not found" content)]))))))
