@@ -229,12 +229,12 @@
     (define (edge-id->edge id)
       (cond [(findf (lambda ([edge : (Edge S)]) (eq? id (edge-id edge))) edges) => identity]
             [else (error 'llm-choose "unexpected error")]))
-    (: edge-id->edge-name (-> Symbol String))
+    (: edge-id->edge-name (-> Any String))
     (define (edge-id->edge-name id)
-      (edge-name (edge-id->edge id)))
+      (edge-name (edge-id->edge (assert id symbol?))))
     (define-values (id extra)
-      ((console-llm-prompt msgs) (prompt-info title) (op-choose symbol? edge-ids #:show edge-id->edge-name)))
-    (values (edge-id->edge id) extra)))
+      ((console-llm-prompt msgs) (prompt-info title) (op-choose prompt-value? edge-ids #:show edge-id->edge-name)))
+    (values (edge-id->edge (assert id symbol?)) extra)))
 
 (: console-llm-prompt/log (All (S)
                                (-> (-> Event Void)
