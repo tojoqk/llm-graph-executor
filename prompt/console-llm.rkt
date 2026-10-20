@@ -23,7 +23,7 @@
   (let* ([choices (third op)]
          [show (fourth op)]
          [out : Output-Port (open-output-string)])
-    (fprintf out "* ~a\n" (prompt-info-title info))
+    (fprintf out "* ~a\n" (prompt-info-content info))
     (for ([choice choices])
       (fprintf out "- ~a\n" (show choice)))
     (let ([text (get-output-string out)])
@@ -60,9 +60,9 @@
                             '2_content (hash 'type "string"))
           'required (list "1_reasoning" "2_content")
           'additionalProperties #f))
-  (printf "* ~a\n" (prompt-info-title info))
+  (printf "* ~a\n" (prompt-info-content info))
   (with-retry (current-console-llm-prompt-retry-count)
-    (let* ([response (assert (request-llm schema (cons (list 'system (prompt-info-title info)) msgs))
+    (let* ([response (assert (request-llm schema (cons (list 'system (format "~a" (prompt-info-content info))) msgs))
                              hash?)]
            [content (assert (hash-ref response '2_content) string?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
@@ -88,9 +88,9 @@
                                                          [(positive-integer) '(minimum 1)]))))
           'required (list  "1_reasoning" "2_content")
           'additionalProperties #f))
-  (printf "* ~a\n" (prompt-info-title meta))
+  (printf "* ~a\n" (prompt-info-content meta))
   (with-retry (current-console-llm-prompt-retry-count)
-    (let* ([response (assert (request-llm schema (cons (list 'system (prompt-info-title meta)) msgs)) hash?)]
+    (let* ([response (assert (request-llm schema (cons (list 'system (format "~a" (prompt-info-content meta))) msgs)) hash?)]
            [content (assert (hash-ref response '2_content) exact?)]
            [reasoning (assert (hash-ref response '1_reasoning) string?)])
       (begin0
@@ -119,11 +119,11 @@
                                              'maximum (third op)))
           'required (list  "1_reasoning" "2_content")
           'additionalProperties #f))
-  (printf "* ~a\n" (prompt-info-title meta))
+  (printf "* ~a\n" (prompt-info-content meta))
   (with-retry (current-console-llm-prompt-retry-count)
     (let* ([response (assert (request-llm schema (cons
                                                   (list 'system (format "* ~a\n(~a..~a)?"
-                                                                        (prompt-info-title meta)
+                                                                        (prompt-info-content meta)
                                                                         (second op)
                                                                         (third op)))
                                                   msgs)) hash?)]

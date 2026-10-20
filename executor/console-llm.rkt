@@ -134,7 +134,7 @@
                    next-st
                    (list* r/node r/edge h)))]
           [(choice)
-           (define choice-pmt ((node-prompt n) st))
+           (define choice-pmt (format "~a" ((node-prompt n) st)))
            (let-values ([(cmd extra)
                          (case (node-info->llm-role (node-node-info n))
                            [(assistant)
@@ -181,7 +181,7 @@
                                  (-> Trace (Listof LLM-Message))
                                  (Values Record Record S))))
 (define (console-llm-step st e h config convert/edge convert/node node-info->role trace->messages)
-  (: message-with-log (-> (-> Event Void) (-> Any Void)))
+  (: message-with-log (-> (-> Event Void) (-> (U String (Promise Any)) Void)))
   (define ((message-with-log emit) val)
     (emit (message-result val))
     (newline)

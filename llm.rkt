@@ -23,13 +23,13 @@
                                             (third op)
                                             (second op))])
                              (fprintf out "~a\n"
-                                      (prompt-info-title (prompt-result-info x)))
+                                      (prompt-info-content (prompt-result-info x)))
                              (for ([item items])
                                (if (pair? item)
                                    (fprintf out "  - ~a: ~a\n" (car item) (cadr item))
                                    (fprintf out "  - ~a\n" item)))
                              (get-output-string out))]
-                          [else (prompt-info-title (prompt-result-info x))])]
+                          [else (prompt-info-content (prompt-result-info x))])]
            [extra (prompt-result-extra x)])
       (list (list role
                   (cond [(and (list? extra)
@@ -85,7 +85,7 @@
                       (format "~a" (node-info-name n)))))))
   (: message-messages (-> Message-Result (Listof LLM-Message)))
   (define (message-messages m)
-    (list (list 'system (format "~a" (message-result-message m)))))
+    (list (list 'system (format "~a" (message-result-content m)))))
   (: event-messages (-> (U Prompt-Result Message-Result) (Listof LLM-Message)))
   (define (event-messages e)
     (case (car e)
